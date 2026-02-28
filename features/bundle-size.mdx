@@ -1,0 +1,473 @@
+---
+title: Bundle Size Analysis
+description: Track and optimize your app's binary size over time
+---
+
+Tuist's Bundle Size Analysis helps you understand, track, and optimize your app's install and download sizes, ensuring your app stays lean and user-friendly.
+
+## Overview
+
+Bundle size analysis provides:
+
+<CardGroup cols={3}>
+  <Card title="Size Tracking" icon="chart-line">
+    Monitor install and download sizes over time
+  </Card>
+  <Card title="Detailed Breakdown" icon="sitemap">
+    See size contribution of every file and framework
+  </Card>
+  <Card title="Size Trends" icon="trending-up">
+    Track size changes across branches and versions
+  </Card>
+</CardGroup>
+
+<Info>
+  Understanding your app's size is critical for user acquisition. A 6MB increase can reduce downloads by up to 23% in emerging markets.
+</Info>
+
+## Key Metrics
+
+### Install Size
+
+**What it is:** The amount of storage your app occupies on a device after installation.
+
+- Includes all resources, frameworks, and assets
+- Uncompressed size
+- What users see in Settings > Storage
+
+### Download Size
+
+**What it is:** The size of the app package users download from the App Store.
+
+- Compressed .ipa file
+- App Store Connect measurement
+- Varies by device (App Thinning)
+
+### Size Breakdown
+
+Detailed analysis of size contributors:
+
+```
+MyApp.app (87.2 MB install, 42.3 MB download)
+├── Executable (12.4 MB)
+├── Frameworks/ (38.2 MB)
+│   ├── CoreFramework.framework (15.8 MB)
+│   ├── Networking.framework (8.2 MB)
+│   └── Analytics.framework (14.2 MB)
+├── Assets.car (18.4 MB)
+├── Resources/ (14.3 MB)
+│   ├── Videos/ (8.2 MB)
+│   ├── Images/ (4.1 MB)
+│   └── Fonts/ (2.0 MB)
+└── Other (3.9 MB)
+```
+
+## Getting Started
+
+<Steps>
+  <Step title="Build your app">
+    Create a release build:
+    ```bash
+    tuist build --configuration Release
+    ```
+  </Step>
+  
+  <Step title="Upload bundle for analysis">
+    Share the app to generate bundle analysis:
+    ```bash
+    tuist share
+    ```
+    
+    Tuist automatically analyzes the bundle and uploads metrics.
+  </Step>
+  
+  <Step title="View analysis">
+    Check the bundle size dashboard:
+    ```bash
+    tuist project show
+    ```
+    
+    Or visit your project in Tuist Cloud.
+  </Step>
+</Steps>
+
+## Viewing Bundle Analysis
+
+### Dashboard
+
+Access bundle analysis in Tuist Cloud:
+
+1. Navigate to your project
+2. Go to **Insights > Bundle Size**
+3. View size trends and breakdowns
+
+### Bundle Explorer
+
+Interactive tree view of your app's contents:
+
+<Tabs>
+  <Tab title="Tree View">
+    Navigate the bundle hierarchy:
+    - Expand/collapse directories
+    - See size and percentage of each item
+    - Sort by size
+    - Filter by file type
+  </Tab>
+  
+  <Tab title="List View">
+    Flat list sorted by size:
+    - Largest files first
+    - Quick identification of heavy assets
+    - Search by name
+  </Tab>
+  
+  <Tab title="Charts">
+    Visual representations:
+    - Pie chart by category
+    - Treemap visualization
+    - Size over time graph
+  </Tab>
+</Tabs>
+
+## Size Trends
+
+### Historical Tracking
+
+Monitor size changes over time:
+
+```
+┌──────────────────────────────────┐
+│  Bundle Size Trend (30 days)   │
+└──────────────────────────────────┘
+
+90 MB ┊                      ●
+85 MB ┊              ● ●     ●
+80 MB ┊          ●            
+75 MB ┊      ●               
+70 MB ┊  ●                   
+      └─────────────────────────────
+       Jan        Feb        Mar
+```
+
+### Deviation Tracking
+
+See size changes compared to baseline:
+
+- **🟢 Within target**: Size is stable
+- **🟡 Small increase**: +2-5% growth
+- **🔴 Large increase**: +5%+ growth (needs attention)
+
+### Branch Comparison
+
+Compare feature branch size against main:
+
+| Branch | Install Size | vs Main | Download Size | vs Main |
+|--------|--------------|---------|---------------|---------|
+| main | 87.2 MB | - | 42.3 MB | - |
+| feature/video | 95.8 MB | 🔴 +9.9% | 46.1 MB | +9.0% |
+| fix/images | 85.1 MB | 🟢 -2.4% | 41.2 MB | -2.6% |
+
+## Optimization Strategies
+
+### Identify Large Assets
+
+<Steps>
+  <Step title="Find heaviest resources">
+    Sort bundle contents by size in the explorer
+  </Step>
+  
+  <Step title="Analyze necessity">
+    Question each large file:
+    - Is it essential?
+    - Can it be smaller?
+    - Could it be on-demand?
+  </Step>
+  
+  <Step title="Optimize or remove">
+    Apply optimizations (see below)
+  </Step>
+  
+  <Step title="Measure impact">
+    Upload new bundle and compare sizes
+  </Step>
+</Steps>
+
+### Image Optimization
+
+<AccordionGroup>
+  <Accordion title="Use Asset Catalogs" icon="images">
+    - Enable **App Thinning** automatically
+    - Device-specific image delivery
+    - Compression optimization
+    
+    ```swift
+    // Use asset catalogs, not bundled PNGs
+    Image("logo") // ✓ Good
+    Image(UIImage(named: "logo.png")!) // ✗ Bad
+    ```
+  </Accordion>
+  
+  <Accordion title="Choose the right format" icon="image">
+    - **HEIC/WebP**: Best compression for photos
+    - **PNG**: Transparency required
+    - **SVG**: Vector graphics (via SF Symbols or PDF)
+    
+    ```swift
+    // Use SF Symbols when possible
+    Image(systemName: "star.fill") // Tiny size
+    ```
+  </Accordion>
+  
+  <Accordion title="Compress images" icon="compress">
+    Use tools like ImageOptim or tinypng:
+    
+    ```bash
+    # Example with ImageOptim CLI
+    imageoptim Resources/**/*.png
+    ```
+    
+    Can reduce size by **30-60%** without visible quality loss.
+  </Accordion>
+  
+  <Accordion title="Lazy load when possible" icon="cloud-arrow-down">
+    Download heavy images on-demand:
+    
+    ```swift
+    // Download tutorial videos at runtime
+    // Not bundled with app
+    func downloadTutorial() async {
+        let url = URL(string: "https://cdn.app.com/tutorial.mp4")!
+        // Download...
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Code Optimization
+
+<AccordionGroup>
+  <Accordion title="Remove unused code" icon="trash">
+    - Delete dead code paths
+    - Remove unused dependencies
+    - Audit third-party libraries
+    
+    ```bash
+    # Use periphery to find unused code
+    periphery scan
+    ```
+  </Accordion>
+  
+  <Accordion title="Enable optimization flags" icon="gauge-high">
+    In release builds:
+    
+    ```swift
+    // Project.swift or Build Settings
+    SWIFT_OPTIMIZATION_LEVEL = "-O"
+    SWIFT_COMPILATION_MODE = "wholemodule"
+    ```
+  </Accordion>
+  
+  <Accordion title="Use dynamic frameworks sparingly" icon="cubes">
+    Dynamic frameworks add overhead:
+    - Prefer static linking for small frameworks
+    - Only use dynamic for shared or plugin frameworks
+  </Accordion>
+</AccordionGroup>
+
+### Dependency Audit
+
+<Steps>
+  <Step title="List all dependencies">
+    ```bash
+    tuist dependencies list
+    ```
+  </Step>
+  
+  <Step title="Measure each dependency's size">
+    Check bundle breakdown for framework sizes
+  </Step>
+  
+  <Step title="Find lighter alternatives">
+    - Do you need the full library?
+    - Can you implement the feature yourself?
+    - Are there smaller alternatives?
+  </Step>
+  
+  <Step title="Remove or replace">
+    Update `Package.swift` or `Project.swift`
+  </Step>
+</Steps>
+
+<Warning>
+  A single large dependency (like Firebase or AWS SDK) can add 10-30MB to your app.
+</Warning>
+
+## CI/CD Integration
+
+### Automatic Size Tracking
+
+Track bundle size in every build:
+
+```yaml GitHub Actions
+name: Track Bundle Size
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  bundle-size:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install Tuist
+        run: curl -Ls https://install.tuist.io | bash
+      
+      - name: Build and analyze
+        run: |
+          tuist build --configuration Release
+          tuist share --no-upload  # Analyze only
+        env:
+          TUIST_TOKEN: ${{ secrets.TUIST_TOKEN }}
+      
+      - name: Check size increase
+        run: |
+          # Tuist CLI can check if size increased
+          tuist bundle check --max-increase 5%
+```
+
+### PR Size Warnings
+
+Get notified of size changes in pull requests:
+
+```markdown
+## 📊 Bundle Size Report
+
+**Install Size:** 89.2 MB (+2.0 MB, +2.3%)
+**Download Size:** 43.1 MB (+0.8 MB, +1.9%)
+
+### Changes:
+- 🔴 +1.5 MB in Analytics.framework
+- 🟡 +0.5 MB in Images/
+
+[View detailed breakdown](https://tuist.dev/acme/myapp/bundles/xyz)
+```
+
+### Size Budgets
+
+Enforce size limits:
+
+```yaml
+# .tuist/Config.yml
+bundle:
+  size_limits:
+    install: 100MB  # Fail CI if install size exceeds 100MB
+    download: 50MB  # Fail CI if download size exceeds 50MB
+    increase: 5%    # Fail if size increases by more than 5%
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Set Size Budgets" icon="scale-balanced">
+    Define acceptable size ranges:
+    - Max install size
+    - Max download size
+    - Max per-release increase
+  </Card>
+  
+  <Card title="Monitor Regularly" icon="chart-line">
+    Check bundle analysis:
+    - Every release
+    - After adding dependencies
+    - When users report issues
+  </Card>
+  
+  <Card title="Optimize Assets First" icon="image">
+    Assets are usually the biggest wins:
+    - Images: 30-60% savings
+    - Videos: Consider streaming
+    - Fonts: Subset unused glyphs
+  </Card>
+  
+  <Card title="Review Dependencies" icon="cube">
+    Audit third-party libraries:
+    - Quarterly dependency review
+    - Remove unused packages
+    - Find lighter alternatives
+  </Card>
+</CardGroup>
+
+## App Thinning
+
+Leverage Apple's App Thinning:
+
+### Slicing
+
+<Accordion title="What it is">
+  App Store delivers device-specific assets:
+  - iPhone 15 Pro gets @3x images only
+  - iPad gets iPad-specific resources
+  - Older devices get compatible assets
+</Accordion>
+
+**Setup:**
+```swift
+// Use asset catalogs with device variants
+Assets.xcassets/
+  Icon.imageset/
+    Icon@1x.png  // iPhone SE
+    Icon@2x.png  // iPhone 14
+    Icon@3x.png  // iPhone 15 Pro
+```
+
+### Bitcode (Deprecated)
+
+<Accordion title="Note">
+  Bitcode was deprecated in Xcode 14. Modern apps use Metal shader compilation instead.
+</Accordion>
+
+### On-Demand Resources
+
+<Accordion title="What it is">
+  Resources downloaded when needed:
+  - Game levels
+  - Tutorial content
+  - Additional languages
+</Accordion>
+
+**Example:**
+```swift
+let request = NSBundleResourceRequest(tags: ["level2"])
+request.beginAccessingResources { error in
+    if error == nil {
+        // Level 2 assets are now available
+    }
+}
+```
+
+## Performance Impact
+
+Bundle size affects user experience:
+
+| Size | User Impact |
+|------|-------------|
+| &lt;50 MB | 🟢 Excellent - Quick downloads, minimal storage concern |
+| 50-100 MB | 🟡 Good - Acceptable for most users |
+| 100-200 MB | 🟠 Fair - Slower downloads, storage consideration |
+| &gt;200 MB | 🔴 Poor - Requires WiFi, significant storage, lower conversion |
+
+<Info>
+  For every 6MB increase, expect a ~1% decrease in download conversion rate.
+</Info>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Build Insights" icon="chart-line" href="/features/insights">
+    Analyze build performance and compilation time
+  </Card>
+  <Card title="Binary Caching" icon="box" href="/features/cache">
+    Speed up builds with intelligent caching
+  </Card>
+</CardGroup>

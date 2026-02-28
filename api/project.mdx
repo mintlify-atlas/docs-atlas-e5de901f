@@ -1,0 +1,109 @@
+---
+title: Project
+titleTemplate: :title | API Reference | Tuist Documentation
+description: API reference for the Project type in Tuist's ProjectDescription framework
+---
+
+# Project
+
+A project representation used to define Xcode projects in `Project.swift` manifest files.
+
+## Overview
+
+The `Project` struct is the root element of a Tuist manifest that describes an Xcode project. It contains all the information needed to generate an Xcode project including targets, schemes, settings, and dependencies.
+
+## Usage
+
+```swift
+import ProjectDescription
+
+let project = Project(
+    name: "MyProject",
+    organizationName: "MyOrg",
+    targets: [
+        .target(
+            name: "App",
+            destinations: .iOS,
+            product: .app,
+            bundleId: "dev.tuist.App",
+            infoPlist: "Config/App-Info.plist",
+            sources: ["Sources/**"],
+            resources: [
+                "Resources/**",
+                .folderReference(path: "Stubs")
+            ],
+            dependencies: [
+                .project(target: "Framework1", path: "../Framework1")
+            ]
+        )
+    ],
+    schemes: [
+        Scheme(
+            name: "App-Debug",
+            shared: true,
+            buildAction: .buildAction(targets: ["App"]),
+            testAction: .targets(["AppTests"]),
+            runAction: .runAction(executable: "App")
+        )
+    ]
+)
+```
+
+## Initializer
+
+<ParamField path="name" type="String" required>
+  The name of the project. Also used as the file name of the generated Xcode project.
+</ParamField>
+
+<ParamField path="organizationName" type="String?" default="nil">
+  The name of the organization used by Xcode as copyright information.
+</ParamField>
+
+<ParamField path="classPrefix" type="String?" default="nil">
+  The prefix for class files Xcode generates when you create a project or class file.
+</ParamField>
+
+<ParamField path="options" type="Options" default=".options()">
+  The project options for configuring Xcode project generation behavior.
+</ParamField>
+
+<ParamField path="packages" type="[Package]" default="[]">
+  The Swift Packages used by the project.
+</ParamField>
+
+<ParamField path="settings" type="Settings?" default="nil">
+  The build settings and configuration for the project.
+</ParamField>
+
+<ParamField path="targets" type="[Target]" default="[]" required>
+  The targets of the project. See [Target API](/api/target) for details.
+</ParamField>
+
+<ParamField path="schemes" type="[Scheme]" default="[]">
+  The custom schemes for the project. Default schemes for each target are generated automatically if not specified. See [Scheme API](/api/scheme) for details.
+</ParamField>
+
+<ParamField path="fileHeaderTemplate" type="FileHeaderTemplate?" default="nil">
+  The custom file header template for Xcode built-in file templates.
+</ParamField>
+
+<ParamField path="additionalFiles" type="[FileElement]" default="[]">
+  The additional files for the project. For target-specific additional files, see `Target.additionalFiles`.
+</ParamField>
+
+<ParamField path="resourceSynthesizers" type="[ResourceSynthesizer]" default=".default">
+  The resource synthesizers for the project to generate accessors for resources.
+</ParamField>
+
+## Properties
+
+<ResponseField name="containsExternalDependencies" type="Bool">
+  A computed property that returns `true` if the project contains targets that depend on external dependencies.
+</ResponseField>
+
+## Related Types
+
+- [Target](/api/target) - Defines individual build targets
+- [Scheme](/api/scheme) - Defines build, run, and test schemes
+- [Settings](/api/settings) - Defines build settings and configurations
+- [Dependencies](/api/dependencies) - Defines target dependencies

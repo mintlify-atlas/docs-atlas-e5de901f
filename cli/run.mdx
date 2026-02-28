@@ -1,0 +1,201 @@
+---
+title: "tuist run"
+description: "Run a preview or scheme from your project"
+---
+
+## Overview
+
+The `tuist run` command runs a preview, app specifier, or scheme from a Tuist-generated project. It provides a convenient way to launch apps without opening Xcode.
+
+## Usage
+
+```bash
+tuist run [options] <runnable> [arguments...]
+```
+
+## Options
+
+<ParamField path="--path" type="string" default=".">
+  The path to the directory that contains the project with the target or scheme to be run.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+<ParamField path="--device" type="string">
+  The device name to run on (e.g., "iPhone 15 Pro").
+</ParamField>
+
+<ParamField path="--generate" type="boolean" default="false">
+  Force the generation of the project before running.
+</ParamField>
+
+<ParamField path="--clean" type="boolean" default="false">
+  Clean the project before running.
+</ParamField>
+
+<ParamField path="--configuration" type="string">
+  The configuration to be used when building the scheme (e.g., Debug, Release).
+</ParamField>
+
+<ParamField path="-C" type="string">
+  Short form of `--configuration`.
+</ParamField>
+
+<ParamField path="--os" type="string">
+  The OS version of the simulator.
+</ParamField>
+
+<ParamField path="-o" type="string">
+  Short form of `--os`.
+</ParamField>
+
+<ParamField path="--rosetta" type="boolean" default="false">
+  Append arch=x86_64 to the destination to run the simulator in Rosetta mode.
+</ParamField>
+
+## Arguments
+
+<ParamField path="runnable" type="string" required>
+  One of:
+  - A preview URL (e.g., `https://preview.tuist.dev/...`)
+  - An app specifier (e.g., `App@latest` or `App@feature-branch`)
+  - A scheme name from your generated project (macOS only)
+</ParamField>
+
+<ParamField path="arguments" type="string[]">
+  Arguments to pass to the application during execution. All arguments after the runnable are forwarded to the app.
+</ParamField>
+
+## Examples
+
+### Run by scheme name (macOS)
+
+```bash
+tuist run MyApp
+```
+
+Runs the `MyApp` scheme from your generated project.
+
+### Run with app specifier
+
+```bash
+tuist run App@latest
+```
+
+Runs the latest version of App from the preview system.
+
+### Run with branch specifier
+
+```bash
+tuist run App@feature-branch
+```
+
+Runs the App build from the `feature-branch`.
+
+### Run preview URL
+
+```bash
+tuist run https://preview.tuist.dev/abc123
+```
+
+Runs an app from a preview link.
+
+### Run on specific device
+
+```bash
+tuist run --device "iPhone 15 Pro" MyApp
+```
+
+Runs MyApp on the iPhone 15 Pro simulator.
+
+### Run with generation
+
+```bash
+tuist run --generate MyApp
+```
+
+Generates the workspace first, then runs MyApp.
+
+### Run with configuration
+
+```bash
+tuist run --configuration Release MyApp
+```
+
+Runs MyApp using the Release configuration.
+
+### Run with app arguments
+
+```bash
+tuist run MyApp -- --verbose --config debug
+```
+
+Runs MyApp and passes `--verbose` and `--config debug` to the app.
+
+### Run with specific OS version
+
+```bash
+tuist run --os 17.0 --device "iPhone 15" MyApp
+```
+
+Runs MyApp on iPhone 15 with iOS 17.0.
+
+### Run in Rosetta mode
+
+```bash
+tuist run --rosetta MyApp
+```
+
+Runs MyApp in Rosetta mode for Intel compatibility on Apple Silicon.
+
+## Runnable types
+
+### Scheme name (macOS only)
+
+Run a scheme from your generated Tuist project:
+
+```bash
+tuist run MyAppScheme
+```
+
+### App specifier
+
+Run an app using an identifier and version/branch:
+
+```bash
+tuist run MyApp@latest         # Latest version
+tuist run MyApp@v1.2.3         # Specific version
+tuist run MyApp@feature-login  # Specific branch
+```
+
+### Preview URL
+
+Run an app from a preview link:
+
+```bash
+tuist run https://preview.tuist.dev/your-preview-id
+```
+
+## App arguments
+
+Pass arguments to your app by adding them after the runnable:
+
+```bash
+tuist run MyApp -- --my-flag value --another-flag
+```
+
+All arguments after `--` are forwarded to the app's launch arguments.
+
+## Requirements
+
+- For preview URLs and app specifiers: Tuist account and authentication (`tuist auth`)
+- For scheme names: Generated Xcode project
+- macOS with Xcode installed
+
+## Related
+
+- [Generate command](/cli/generate)
+- [Build command](/cli/build)
+- [Share command](/cli/share)

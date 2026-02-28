@@ -1,0 +1,148 @@
+---
+title: "tuist generate"
+description: "Generate an Xcode workspace from your Tuist manifests"
+---
+
+## Overview
+
+The `tuist generate` command creates an Xcode workspace from your `Project.swift` and `Workspace.swift` manifests. It's the core command for converting your declarative project definitions into working Xcode projects.
+
+## Usage
+
+```bash
+tuist generate [options] [targets...]
+```
+
+## Options
+
+<ParamField path="--path" type="string" default=".">
+  The path to the directory or a subdirectory of the project.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+<ParamField path="--no-open" type="boolean" default="false">
+  Don't open the project after generating it. By default, the generated workspace opens automatically unless running in CI.
+</ParamField>
+
+<ParamField path="-n" type="boolean">
+  Short form of `--no-open`.
+</ParamField>
+
+<ParamField path="--no-binary-cache" type="boolean" default="false">
+  Ignore binary cache and use sources only. **Deprecated:** Use `--cache-profile none` instead.
+</ParamField>
+
+<ParamField path="--cache-profile" type="string">
+  Binary cache profile to use: `simulator`, `device`, `all`, `none`, or a custom profile name. Defaults to the profile configured in `Tuist.swift`, or `only-external` if not configured.
+</ParamField>
+
+<ParamField path="--configuration" type="string">
+  Configuration to generate for (e.g., Debug, Release).
+</ParamField>
+
+<ParamField path="-c" type="string">
+  Short form of `--configuration`.
+</ParamField>
+
+## Arguments
+
+<ParamField path="targets" type="string[]">
+  Targets to focus on, specified by name or tag query (e.g., `tag:feature`). Other targets will be linked as binaries if possible. If no target is specified, all project targets will be generated (except external ones, such as Swift packages).
+</ParamField>
+
+## Examples
+
+### Generate all targets
+
+```bash
+tuist generate
+```
+
+Generates the complete workspace with all targets and opens it in Xcode.
+
+### Generate specific targets
+
+```bash
+tuist generate App Framework
+```
+
+Generates only the `App` and `Framework` targets, linking other dependencies as binaries when possible.
+
+### Generate with tag query
+
+```bash
+tuist generate tag:feature
+```
+
+Generates only targets tagged with `feature`.
+
+### Generate without opening
+
+```bash
+tuist generate --no-open
+```
+
+Generates the workspace but doesn't open it in Xcode.
+
+### Generate without cache
+
+```bash
+tuist generate --cache-profile none
+```
+
+Generates the workspace without using any binary cache.
+
+### Generate for specific configuration
+
+```bash
+tuist generate --configuration Release
+```
+
+Generates the workspace configured for Release builds.
+
+## Subcommands
+
+### `tuist generate list`
+
+List previous generation runs and their status.
+
+```bash
+tuist generate list
+```
+
+### `tuist generate show`
+
+Show details about a specific generation run.
+
+```bash
+tuist generate show [generation-id]
+```
+
+## Binary caching
+
+Tuist supports binary caching to speed up generation and build times. Use `--cache-profile` to control caching behavior:
+
+- `simulator`: Cache for simulator architectures only
+- `device`: Cache for device architectures only
+- `all`: Cache for all architectures
+- `none`: Disable caching
+- Custom profile name: Use a profile defined in your `Tuist.swift`
+
+## Focused generation
+
+Focused generation allows you to work on specific targets while keeping the rest as pre-compiled binaries. This significantly improves generation and build times for large projects.
+
+```bash
+tuist generate MyFeature
+```
+
+This generates `MyFeature` as source code while linking dependencies as binaries from cache.
+
+## Related
+
+- [Build command](/cli/build)
+- [Cache command](/cli/cache)
+- [Project.swift reference](/cli/config/project)

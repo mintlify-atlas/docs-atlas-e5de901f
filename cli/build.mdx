@@ -1,0 +1,180 @@
+---
+title: "tuist build"
+description: "Build your Tuist project"
+---
+
+## Overview
+
+The `tuist build` command provides a set of commands to build your Tuist projects. It generates the Xcode workspace if needed and builds the specified scheme or all buildable schemes.
+
+## Usage
+
+```bash
+tuist build [options] [scheme]
+```
+
+## Options
+
+<ParamField path="--path" type="string" default=".">
+  The path to the directory that contains the project to be built.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+<ParamField path="--generate" type="boolean" default="false">
+  Force the generation of the project before building.
+</ParamField>
+
+<ParamField path="--clean" type="boolean" default="false">
+  Clean the project before building it.
+</ParamField>
+
+<ParamField path="--configuration" type="string">
+  The configuration to be used when building the scheme (e.g., Debug, Release).
+</ParamField>
+
+<ParamField path="-C" type="string">
+  Short form of `--configuration`.
+</ParamField>
+
+<ParamField path="--device" type="string">
+  Build on a specific device.
+</ParamField>
+
+<ParamField path="-d" type="string">
+  Short form of `--device`.
+</ParamField>
+
+<ParamField path="--platform" type="string">
+  Build for a specific platform (iOS, macOS, tvOS, visionOS, watchOS).
+</ParamField>
+
+<ParamField path="--os" type="string">
+  Build with a specific version of the OS.
+</ParamField>
+
+<ParamField path="-o" type="string">
+  Short form of `--os`.
+</ParamField>
+
+<ParamField path="--rosetta" type="boolean" default="false">
+  Append arch=x86_64 to the destination to run the simulator in Rosetta mode.
+</ParamField>
+
+<ParamField path="--build-output-path" type="string">
+  The directory where build products will be copied to when the project is built.
+</ParamField>
+
+<ParamField path="--generate-only" type="boolean" default="false">
+  Generate the project and skip building. Useful for debugging purposes.
+</ParamField>
+
+<ParamField path="--no-binary-cache" type="boolean" default="false">
+  Ignore binary cache and use sources only.
+</ParamField>
+
+## Arguments
+
+<ParamField path="scheme" type="string">
+  The scheme to be built. By default, it builds all the buildable schemes of the project in the current directory.
+</ParamField>
+
+<ParamField path="--" type="string[]">
+  Arguments after `--` are passed through to xcodebuild. Example: `tuist build -- -destination 'platform=iOS Simulator,name=iPhone 15' -sdk iphonesimulator`
+</ParamField>
+
+## Examples
+
+### Build default schemes
+
+```bash
+tuist build
+```
+
+Builds all buildable schemes in the current project.
+
+### Build specific scheme
+
+```bash
+tuist build MyApp
+```
+
+Builds the `MyApp` scheme.
+
+### Build with generation
+
+```bash
+tuist build --generate MyApp
+```
+
+Generates the workspace first, then builds the `MyApp` scheme.
+
+### Clean build
+
+```bash
+tuist build --clean MyApp
+```
+
+Cleans and builds the `MyApp` scheme.
+
+### Build for specific device
+
+```bash
+tuist build --device "iPhone 15 Pro" MyApp
+```
+
+Builds `MyApp` for the iPhone 15 Pro simulator.
+
+### Build with configuration
+
+```bash
+tuist build --configuration Release MyApp
+```
+
+Builds `MyApp` using the Release configuration.
+
+### Build with Rosetta
+
+```bash
+tuist build --rosetta MyApp
+```
+
+Builds `MyApp` in Rosetta mode for Intel architecture on Apple Silicon Macs.
+
+### Pass arguments to xcodebuild
+
+```bash
+tuist build MyApp -- -destination 'platform=iOS Simulator,name=iPhone 15' -sdk iphonesimulator
+```
+
+Builds `MyApp` and passes additional arguments to xcodebuild.
+
+## Subcommands
+
+### `tuist build list`
+
+List previous build runs and their status.
+
+```bash
+tuist build list
+```
+
+### `tuist build show`
+
+Show details about a specific build run.
+
+```bash
+tuist build show [build-id]
+```
+
+## Binary caching
+
+By default, `tuist build` uses binary cache to speed up build times. Use `--no-binary-cache` to disable caching and build from sources only.
+
+## Related
+
+- [Generate command](/cli/generate)
+- [Test command](/cli/test)
+- [Cache command](/cli/cache)

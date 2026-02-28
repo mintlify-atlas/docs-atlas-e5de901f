@@ -1,0 +1,507 @@
+---
+title: "Generated Projects"
+description: "How Tuist generates Xcode projects from manifests"
+icon: "wand-magic-sparkles"
+---
+
+Tuist generates Xcode projects from Swift manifest files, eliminating manual `.pbxproj` maintenance and enabling team-wide consistency.
+
+## Why Generated Projects?
+
+Manually maintaining Xcode project files creates several challenges:
+
+<CardGroup cols={2}>
+  <Card title="Merge Conflicts" icon="code-merge">
+    `.pbxproj` files are XML-based and conflict-prone when multiple developers modify projects
+  </Card>
+  
+  <Card title="Inconsistency" icon="triangle-exclamation">
+    Different developers may configure settings differently, leading to build issues
+  </Card>
+  
+  <Card title="Hard to Review" icon="eye-slash">
+    Changes to `.pbxproj` are difficult to review in pull requests
+  </Card>
+  
+  <Card title="Configuration Drift" icon="shuffle">
+    Project settings can drift over time without clear documentation
+  </Card>
+</CardGroup>
+
+<Note>
+  **Tuist solves these problems** by treating manifests as the single source of truth and generating projects on-demand.
+</Note>
+
+## Generation Flow
+
+When you run `tuist generate`, here's what happens:
+
+<Steps>
+  <Step title="Manifest Discovery">
+    Tuist searches for manifest files starting from the current directory:
+    
+    ```bash
+    # Directory structure
+    /MyWorkspace
+    ├── Tuist.swift              # Global config (optional)
+    ├── Workspace.swift          # Workspace manifest (optional)
+    ├── App/
+    │   └── Project.swift        # Project manifest
+    └── Framework/
+        └── Project.swift        # Another project
+    ```
+    
+    The CLI walks up the directory tree to find configuration and workspace definitions.
+  </Step>
+  
+  <Step title="Manifest Loading">
+    Each manifest is:
+    1. **Compiled** as a Swift executable
+    2. **Executed** in a sandboxed environment
+    3. **Decoded** from JSON output
+    
+    ```swift
+    // Project.swift is compiled and executed
+    import ProjectDescription
+
+    let project = Project(
+        name: "MyApp",
+        targets: [
+            .target(
+                name: "App",
+                destinations: .iOS,
+                product: .app,
+                bundleId: "com.example.app",
+                sources: ["Sources/**"],
+                dependencies: [
+                    .project(target: "Framework", path: "../Framework")
+                ]
+            )
+        ]
+    )
+    ```
+  </Step>
+  
+  <Step title="Graph Construction">
+    Tuist builds a complete dependency graph:
+    - Resolves all target dependencies
+    - Validates no circular dependencies exist
+    - Determines correct build order
+    - Links external packages
+    
+    <Tip>
+      Use `tuist graph` to visualize your project's dependency graph
+    </Tip>
+  </Step>
+  
+  <Step title="Project Generation">
+    The `TuistGenerator` module creates Xcode project files:
+    - Writes `.xcodeproj` package structure
+    - Generates `project.pbxproj` with all targets
+    - Creates schemes for each target
+    - Applies build settings and configurations
+  </Step>
+  
+  <Step title="Scheme Generation">
+    Schemes are automatically generated or customized:
+    - Default scheme per target
+    - Custom schemes from manifest
+    - Build actions and test targets
+    - Run configurations
+  </Step>
+</Steps>
+
+## What Gets Generated?
+
+<Tabs>
+  <Tab title="Xcode Project">
+    A complete `.xcodeproj` package containing:
+    
+    ```bash
+    MyApp.xcodeproj/
+    ├── project.pbxproj          # Main project file
+    └── xcshareddata/
+        └── xcschemes/
+            └── MyApp.xcscheme   # Build schemes
+    ```
+    
+    **Generated elements:**
+    - All targets (apps, frameworks, tests)
+    - Build phases (sources, resources, scripts)
+    - Build configurations (Debug, Release)
+    - Build settings
+    - File references
+    - Groups and folder structure
+  </Tab>
+  
+  <Tab title="Workspace">
+    An `.xcworkspace` that groups multiple projects:
+    
+    ```bash
+    MyWorkspace.xcworkspace/
+    └── contents.xcworkspacedata
+    ```
+    
+    ```swift Workspace.swift
+    import ProjectDescription
+
+    let workspace = Workspace(
+        name: "MyWorkspace",
+        projects: [
+            "App",
+            "Framework",
+            "Packages/**"
+        ]
+    )
+    ```
+    
+    **Benefits:**
+    - Multi-project organization
+    - Shared schemes across projects
+    - Glob pattern support for project discovery
+  </Tab>
+  
+  <Tab title="Schemes">
+    Build schemes with complete configuration:
+    
+    ```swift
+    .scheme(
+        name: "App-Debug",
+        shared: true,
+        buildAction: .buildAction(
+            targets: ["App", "Framework"]
+        ),
+        testAction: .targets(
+            ["AppTests", "FrameworkTests"]
+        ),
+        runAction: .runAction(
+            executable: "App",
+            arguments: .arguments(
+                environmentVariables: [
+                    "API_URL": "https://dev.api.example.com"
+                ]
+            )
+        )
+    )
+    ```
+  </Tab>
+  
+  <Tab title="Derived Files">
+    Additional generated files:
+    - **Resource accessors** (via synthesizers)
+    - **Info.plist** files
+    - **Entitlements** files
+    - **Module maps** for headers
+    - **SwiftGen** outputs (if configured)
+  </Tab>
+</Tabs>
+
+## Generation Options
+
+Customize generation behavior in `Tuist.swift`:
+
+<CodeGroup>
+```swift Basic Configuration
+import ProjectDescription
+
+let tuist = Tuist(
+    project: .tuist(
+        generationOptions: .options(
+            // Xcode 15+ only
+            xcodeProjectName: "MyCustomProject",
+            
+            // Don't open Xcode after generation
+            autogeneratedWorkspaceSchemes: .disabled,
+            
+            // Disable sandboxing for manifest execution
+            disableSandbox: false
+        )
+    )
+)
+```
+
+```swift Advanced Configuration
+import ProjectDescription
+
+let tuist = Tuist(
+    fullHandle: "myorg/myapp",
+    project: .tuist(
+        generationOptions: .options(
+            // Enable remote caching
+            enableCaching: true,
+            
+            // Allow unsigned manifests (dev only)
+            optionalAuthentication: true,
+            
+            // Custom project naming
+            xcodeProjectName: "MyApp",
+            
+            // Additional SPM resolution args
+            additionalPackageResolutionArguments: [
+                "--replace-scm-with-registry"
+            ]
+        ),
+        installOptions: .options(
+            passthroughSwiftPackageManagerArguments: [
+                "--verbose"
+            ]
+        )
+    )
+)
+```
+</CodeGroup>
+
+## Project Options
+
+Per-project generation settings in `Project.swift`:
+
+```swift
+let project = Project(
+    name: "MyApp",
+    options: .options(
+        // Disable automatic scheme generation
+        automaticSchemesOptions: .disabled,
+        
+        // Custom text settings
+        textSettings: .textSettings(
+            usesTabs: false,
+            indentWidth: 4,
+            tabWidth: 4
+        ),
+        
+        // Development region
+        developmentRegion: "en",
+        
+        // Xcode version compatibility
+        xcodeProjectName: "CustomName"
+    ),
+    targets: [...]
+)
+```
+
+## Caching Generated Projects
+
+Tuist caches generation results to speed up subsequent runs:
+
+<Accordion title="Manifest Caching" icon="bolt">
+  **How it works:**
+  - Tuist hashes manifest content and dependencies
+  - Caches compiled manifest executables
+  - Reuses cached results when manifests haven't changed
+  
+  ```bash
+  # First run: compiles manifests
+  tuist generate  # ~3s
+  
+  # Subsequent runs: uses cache
+  tuist generate  # ~0.5s
+  ```
+  
+  **Cache location:**
+  ```bash
+  ~/.tuist/Cache/Manifests/
+  ```
+</Accordion>
+
+## Regeneration Workflow
+
+<Steps>
+  <Step title="Make Changes">
+    Edit your manifest files:
+    
+    ```swift Project.swift
+    // Add a new target
+    .target(
+        name: "Analytics",
+        destinations: .iOS,
+        product: .framework,
+        bundleId: "com.example.analytics"
+    )
+    ```
+  </Step>
+  
+  <Step title="Regenerate">
+    Run Tuist generate:
+    
+    ```bash
+    tuist generate
+    ```
+    
+    Or use the `--no-open` flag to skip opening Xcode:
+    
+    ```bash
+    tuist generate --no-open
+    ```
+  </Step>
+  
+  <Step title="Xcode Updates">
+    Xcode automatically detects changes and reloads the project.
+    
+    <Warning>
+      Don't manually edit `.xcodeproj` files - your changes will be lost on next generation!
+    </Warning>
+  </Step>
+</Steps>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Gitignore Generated Files" icon="git">
+    Add generated files to `.gitignore`:
+    
+    ```bash .gitignore
+    # Tuist generated files
+    *.xcodeproj
+    *.xcworkspace
+    Derived/
+    
+    # Keep manifests
+    !*.swift
+    ```
+    
+    This ensures:
+    - No merge conflicts in project files
+    - Smaller repository size
+    - Team members generate locally
+  </Accordion>
+  
+  <Accordion title="Use Helpers" icon="puzzle-piece">
+    Create reusable manifest helpers:
+    
+    ```swift Tuist/ProjectDescriptionHelpers/Target+Templates.swift
+    import ProjectDescription
+
+    public extension Target {
+        static func feature(
+            name: String,
+            dependencies: [TargetDependency] = []
+        ) -> Target {
+            return .target(
+                name: name,
+                destinations: .iOS,
+                product: .framework,
+                bundleId: "com.example.\(name.lowercased())",
+                sources: ["\(name)/Sources/**"],
+                resources: ["\(name)/Resources/**"],
+                dependencies: dependencies
+            )
+        }
+    }
+    ```
+    
+    ```swift Project.swift
+    import ProjectDescription
+    import ProjectDescriptionHelpers
+
+    let project = Project(
+        name: "MyApp",
+        targets: [
+            .feature(name: "Profile"),
+            .feature(name: "Settings"),
+            .feature(name: "Analytics")
+        ]
+    )
+    ```
+  </Accordion>
+  
+  <Accordion title="Validate Before Committing" icon="check-circle">
+    Add a pre-commit hook to validate manifests:
+    
+    ```bash .git/hooks/pre-commit
+    #!/bin/bash
+    
+    # Validate Tuist manifests
+    if ! tuist generate --no-open; then
+        echo "❌ Tuist generation failed"
+        exit 1
+    fi
+    
+    echo "✅ Tuist generation successful"
+    ```
+  </Accordion>
+  
+  <Accordion title="Document Project Structure" icon="book">
+    Add a README explaining your project structure:
+    
+    ```markdown README.md
+    # MyApp
+
+    ## Project Structure
+    - `App/` - Main application target
+    - `Features/` - Feature modules
+    - `Core/` - Shared utilities
+    
+    ## Building
+    ```bash
+    tuist generate
+    xcodebuild -workspace MyApp.xcworkspace -scheme MyApp
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<Accordion title="Generation Fails" icon="circle-exclamation">
+  **Symptoms:** `tuist generate` exits with an error
+  
+  **Solutions:**
+  1. Check manifest syntax:
+     ```bash
+     tuist edit
+     ```
+  
+  2. Clear cache:
+     ```bash
+     tuist clean
+     tuist generate
+     ```
+  
+  3. Enable verbose logging:
+     ```bash
+     tuist generate --verbose
+     ```
+</Accordion>
+
+<Accordion title="Slow Generation" icon="clock">
+  **Symptoms:** Generation takes longer than expected
+  
+  **Solutions:**
+  1. Check manifest cache:
+     ```bash
+     ls -lh ~/.tuist/Cache/Manifests/
+     ```
+  
+  2. Profile generation:
+     ```bash
+     time tuist generate
+     ```
+  
+  3. Simplify complex globs:
+     ```swift
+     // Avoid deep recursion
+     sources: ["Sources/**/*.swift"]
+     
+     // Prefer specific patterns
+     sources: ["Sources/*.swift", "Sources/Models/*.swift"]
+     ```
+</Accordion>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Manifests" icon="file-code" href="/concepts/manifests">
+    Learn about Project.swift and manifest files
+  </Card>
+  
+  <Card title="Workspaces" icon="folder-tree" href="/concepts/workspaces">
+    Organize multiple projects in workspaces
+  </Card>
+  
+  <Card title="Architecture" icon="diagram-project" href="/concepts/architecture">
+    Understand Tuist's internal architecture
+  </Card>
+  
+  <Card title="Settings" icon="gear" href="/essentials/settings">
+    Configure build settings and options
+  </Card>
+</CardGroup>

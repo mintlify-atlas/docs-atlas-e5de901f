@@ -1,0 +1,172 @@
+---
+title: "tuist cache"
+description: "Manage binary caching for faster builds"
+---
+
+## Overview
+
+The `tuist cache` command manages binary caching to speed up build and generation times. It pre-compiles frameworks and stores them locally and remotely, allowing you to use pre-built binaries instead of compiling from source.
+
+## Usage
+
+```bash
+tuist cache [subcommand] [options]
+```
+
+## Subcommands
+
+### `tuist cache warm`
+
+Warms the local and remote cache by building and caching frameworks.
+
+```bash
+tuist cache warm [options] [targets...]
+```
+
+### `tuist cache config`
+
+Shows the cache configuration for your project.
+
+```bash
+tuist cache config [options]
+```
+
+## Options (for `cache warm`)
+
+<ParamField path="--path" type="string" default=".">
+  The path to the directory that contains the project whose targets will be cached.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+<ParamField path="--configuration" type="string">
+  Configuration to use for binary caching (e.g., Debug, Release).
+</ParamField>
+
+<ParamField path="-c" type="string">
+  Short form of `--configuration`.
+</ParamField>
+
+<ParamField path="--external-only" type="boolean" default="false">
+  If passed, the command caches only the dependencies of the targets passed in the `targets` argument, not the targets themselves.
+</ParamField>
+
+<ParamField path="--generate-only" type="boolean" default="false">
+  Generate the project and skip warming the cache. Useful for debugging purposes.
+</ParamField>
+
+## Arguments
+
+<ParamField path="targets" type="string[]">
+  A list of targets to cache. Those and their dependent targets will be cached. If no target is specified, all the project targets (excluding external ones) and their dependencies will be cached.
+</ParamField>
+
+## Examples
+
+### Warm cache for all targets
+
+```bash
+tuist cache warm
+```
+
+Builds and caches all project targets and their dependencies.
+
+### Warm cache for specific targets
+
+```bash
+tuist cache warm App Framework
+```
+
+Caches the `App` and `Framework` targets along with their dependencies.
+
+### Cache only dependencies
+
+```bash
+tuist cache warm --external-only App
+```
+
+Caches only the dependencies of `App`, not `App` itself.
+
+### Warm cache with configuration
+
+```bash
+tuist cache warm --configuration Release
+```
+
+Builds and caches frameworks using the Release configuration.
+
+### Show cache configuration
+
+```bash
+tuist cache config
+```
+
+Displays the current cache configuration for your project.
+
+## How caching works
+
+Tuist's binary caching system:
+
+1. Calculates a hash for each framework based on its source files and dependencies
+2. Checks if a pre-built binary exists in the cache (local or remote)
+3. If found, uses the cached binary; otherwise, builds from source
+4. Stores newly built binaries in the cache for future use
+
+## Cache profiles
+
+You can configure different cache profiles in your `Tuist.swift` manifest:
+
+- **simulator**: Cache for simulator architectures only
+- **device**: Cache for device architectures only
+- **all**: Cache for all architectures
+- Custom profiles: Define your own caching strategy
+
+## Remote cache
+
+To use remote caching, you need to:
+
+1. Set up a Tuist account and project
+2. Configure your project with `fullHandle` in `Tuist.swift`
+3. Authenticate with `tuist auth`
+
+Once configured, cached binaries are automatically shared across your team.
+
+## Cache configuration
+
+In your `Tuist.swift`:
+
+```swift
+import ProjectDescription
+
+let config = Config(
+    fullHandle: "my-org/my-project",
+    cache: .cache(upload: true)
+)
+```
+
+Set `upload: false` for read-only mode (downloads only, no uploads).
+
+## Best practices
+
+<CardGroup cols={2}>
+  <Card title="Cache in CI" icon="cloud">
+    Run `tuist cache warm` in your CI pipeline to populate the remote cache.
+  </Card>
+  <Card title="Release configuration" icon="rocket">
+    Cache Release builds for production deployments.
+  </Card>
+  <Card title="External dependencies" icon="box">
+    Use `--external-only` to cache only external dependencies.
+  </Card>
+  <Card title="Monitor cache hits" icon="chart-line">
+    Check cache effectiveness with `tuist cache config`.
+  </Card>
+</CardGroup>
+
+## Related
+
+- [Generate command](/cli/generate)
+- [Build command](/cli/build)
+- [Tuist.swift reference](/cli/config/tuist-config)

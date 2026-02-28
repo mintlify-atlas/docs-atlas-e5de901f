@@ -1,0 +1,196 @@
+---
+title: Scheme
+titleTemplate: :title | API Reference | Tuist Documentation
+description: API reference for the Scheme type in Tuist's ProjectDescription framework
+---
+
+# Scheme
+
+A custom scheme for a project that defines how to build, run, test, profile, analyze, and archive.
+
+## Overview
+
+A `Scheme` defines a collection of targets to build, run, test, profile, analyze, and archive. Schemes control the behavior of these actions in Xcode and from the command line.
+
+## Usage
+
+```swift
+import ProjectDescription
+
+let scheme = Scheme.scheme(
+    name: "MyApp-Debug",
+    shared: true,
+    buildAction: .buildAction(targets: ["MyApp", "MyFramework"]),
+    testAction: .targets(
+        ["MyAppTests"],
+        configuration: .debug,
+        options: .options(coverage: true)
+    ),
+    runAction: .runAction(
+        configuration: .debug,
+        executable: "MyApp",
+        arguments: .arguments(
+            launchArguments: [
+                .launchArgument(name: "-UITests", isEnabled: true)
+            ]
+        )
+    ),
+    archiveAction: .archiveAction(configuration: .release),
+    profileAction: .profileAction(configuration: .release),
+    analyzeAction: .analyzeAction(configuration: .debug)
+)
+```
+
+## Minimal Example
+
+```swift
+let scheme = Scheme.scheme(
+    name: "MyApp",
+    shared: true,
+    buildAction: .buildAction(targets: ["MyApp"]),
+    runAction: .runAction(executable: "MyApp")
+)
+```
+
+## Initializer
+
+### `.scheme()` Static Method
+
+<ParamField path="name" type="String" required>
+  The name of the scheme.
+</ParamField>
+
+<ParamField path="shared" type="Bool" default="true">
+  Marks the scheme as shared (i.e., checked into the repository and visible to `xcodebuild` from the command line).
+</ParamField>
+
+<ParamField path="hidden" type="Bool" default="false">
+  When `true`, the scheme doesn't show up in Xcode's scheme dropdown list.
+</ParamField>
+
+<ParamField path="buildAction" type="BuildAction?" default="nil">
+  Action that builds the project targets.
+</ParamField>
+
+<ParamField path="testAction" type="TestAction?" default="nil">
+  Action that runs the project tests.
+</ParamField>
+
+<ParamField path="runAction" type="RunAction?" default="nil">
+  Action that runs project built products.
+</ParamField>
+
+<ParamField path="archiveAction" type="ArchiveAction?" default="nil">
+  Action that runs the project archive.
+</ParamField>
+
+<ParamField path="profileAction" type="ProfileAction?" default="nil">
+  Action that profiles the project.
+</ParamField>
+
+<ParamField path="analyzeAction" type="AnalyzeAction?" default="nil">
+  Action that analyzes the project.
+</ParamField>
+
+## Action Types
+
+### BuildAction
+
+Defines which targets to build and in what order.
+
+```swift
+.buildAction(
+    targets: ["MyApp", "MyFramework"],
+    preActions: [],
+    postActions: []
+)
+```
+
+### TestAction
+
+Defines which test targets to run and testing options.
+
+```swift
+.targets(
+    ["MyAppTests", "MyFrameworkTests"],
+    configuration: .debug,
+    options: .options(
+        coverage: true,
+        codeCoverageTargets: ["MyApp"],
+        language: "en",
+        region: "US"
+    )
+)
+```
+
+### RunAction
+
+Defines how to run the app, including which executable to run and runtime options.
+
+```swift
+.runAction(
+    configuration: .debug,
+    executable: "MyApp",
+    arguments: .arguments(
+        environmentVariables: [
+            "API_URL": .environmentVariable(value: "https://api.example.com", isEnabled: true)
+        ],
+        launchArguments: [
+            .launchArgument(name: "-UITests", isEnabled: true)
+        ]
+    )
+)
+```
+
+### ArchiveAction
+
+Defines how to archive the app for distribution.
+
+```swift
+.archiveAction(
+    configuration: .release,
+    revealArchiveInOrganizer: true
+)
+```
+
+### ProfileAction
+
+Defines how to profile the app using Instruments.
+
+```swift
+.profileAction(
+    configuration: .release,
+    executable: "MyApp"
+)
+```
+
+### AnalyzeAction
+
+Defines how to run static analysis.
+
+```swift
+.analyzeAction(configuration: .debug)
+```
+
+## Best Practices
+
+1. **Shared Schemes**: Set `shared: true` for schemes you want to commit to version control and use in CI/CD.
+
+2. **Configuration-Specific Schemes**: Create separate schemes for different configurations:
+   ```swift
+   Scheme.scheme(name: "MyApp-Debug", shared: true, buildAction: ..., runAction: .runAction(configuration: .debug)),
+   Scheme.scheme(name: "MyApp-Release", shared: true, buildAction: ..., runAction: .runAction(configuration: .release))
+   ```
+
+3. **Test Coverage**: Enable code coverage in test actions:
+   ```swift
+   testAction: .targets(["MyAppTests"], options: .options(coverage: true))
+   ```
+
+4. **Hidden Schemes**: Use `hidden: true` for internal or experimental schemes you don't want to clutter the UI.
+
+## Related APIs
+
+- [Project](/api/project) - Contains schemes
+- [Target](/api/target) - Referenced by scheme actions
+- [Settings](/api/settings) - Configurations referenced by actions

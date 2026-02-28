@@ -1,0 +1,250 @@
+---
+title: Authentication
+description: Learn how to authenticate with Tuist Cloud from the CLI
+---
+
+Before using any Tuist Cloud services, you need to authenticate with the server. Tuist provides multiple authentication methods to suit different environments.
+
+## Authentication Methods
+
+Tuist supports three authentication methods:
+
+<CardGroup cols={3}>
+  <Card title="Browser Login" icon="browser">
+    Interactive authentication for local development
+  </Card>
+  <Card title="Email/Password" icon="envelope">
+    Direct credential authentication for scripts
+  </Card>
+  <Card title="OIDC" icon="shield">
+    CI environment authentication with identity tokens
+  </Card>
+</CardGroup>
+
+## Browser-Based Authentication
+
+The default and most user-friendly method is browser-based authentication using OAuth:
+
+```bash
+tuist auth login
+```
+
+This command will:
+
+1. Open your default browser with the authentication page
+2. Wait for you to log in or sign up
+3. Store authentication tokens locally
+4. Confirm successful authentication
+
+<Note>
+  Browser-based authentication is automatically selected when running on a local machine (non-CI environment).
+</Note>
+
+### Custom Server URL
+
+If you're using a self-hosted Tuist server or a different environment, specify the server URL:
+
+```bash
+tuist auth login --url https://your-tuist-server.com
+```
+
+Alternatively, set the `TUIST_URL` environment variable:
+
+```bash
+export TUIST_URL=https://your-tuist-server.com
+tuist auth login
+```
+
+## Email and Password Authentication
+
+For automation or scripts where browser interaction isn't possible, use email and password authentication:
+
+```bash
+tuist auth login --email your@email.com --password your-password
+```
+
+<Warning>
+  Avoid hardcoding credentials in scripts. Use environment variables or secure credential storage instead.
+</Warning>
+
+### Using Environment Variables
+
+```bash
+#!/bin/bash
+TUIST_EMAIL=$TUIST_EMAIL \
+TUIST_PASSWORD=$TUIST_PASSWORD \
+tuist auth login --email $TUIST_EMAIL --password $TUIST_PASSWORD
+```
+
+## CI/CD Authentication with OIDC
+
+For continuous integration environments, Tuist automatically detects CI and uses OpenID Connect (OIDC) for authentication:
+
+```bash
+# In CI environment (GitHub Actions, GitLab CI, etc.)
+tuist auth login
+```
+
+When running in a CI environment, Tuist will:
+
+1. Detect the CI environment automatically
+2. Fetch an OIDC token from the CI provider
+3. Exchange it for a Tuist access token
+4. Use the token for subsequent requests
+
+### Supported CI Providers
+
+- GitHub Actions
+- GitLab CI
+- Bitrise
+- CircleCI
+- Buildkite
+- Codemagic
+
+<Info>
+  OIDC authentication requires your CI provider to be configured to provide OIDC tokens. Most modern CI systems support this by default.
+</Info>
+
+### GitHub Actions Example
+
+```yaml .github/workflows/build.yml
+name: Build
+on: [push]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    permissions:
+      id-token: write  # Required for OIDC
+      contents: read
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Authenticate with Tuist
+        run: tuist auth login
+      
+      - name: Build with cache
+        run: tuist build
+```
+
+## Managing Authentication
+
+### Check Authentication Status
+
+Verify your current authentication status:
+
+```bash
+tuist auth whoami
+```
+
+This displays:
+- Your username or email
+- The server you're authenticated with
+- Authentication token expiry (if applicable)
+
+### Logout
+
+Remove stored authentication tokens:
+
+```bash
+tuist auth logout
+```
+
+### Refresh Tokens
+
+Authentication tokens automatically refresh when needed. To manually refresh:
+
+```bash
+tuist auth refresh-token
+```
+
+## Token Storage
+
+Authentication tokens are securely stored on your local machine:
+
+- **macOS**: Keychain
+- **Linux**: Encrypted file in `~/.tuist`
+
+Tokens include:
+- **Access token**: Short-lived token for API requests
+- **Refresh token**: Long-lived token to obtain new access tokens
+
+<Warning>
+  Never commit authentication tokens to version control. The CLI stores tokens securely and automatically refreshes them.
+</Warning>
+
+## Project-Specific Configuration
+
+Configure the Tuist server URL in your project's `Config.swift`:
+
+```swift Config.swift
+import ProjectDescription
+
+let config = Config(
+    cloud: .cloud(
+        url: "https://your-tuist-server.com",
+        projectId: "your-org/your-project"
+    )
+)
+```
+
+With this configuration, you don't need to specify `--url` with each command.
+
+## Project Tokens
+
+For CI/CD environments that don't support OIDC, create project-specific tokens:
+
+```bash
+tuist account tokens create --project your-org/your-project
+```
+
+Then use the token in your CI environment:
+
+```bash
+export TUIST_TOKEN=your-project-token
+tuist build
+```
+
+<Note>
+  Project tokens are scoped to specific projects and can be revoked at any time from the Tuist web interface.
+</Note>
+
+## Troubleshooting
+
+### Authentication Fails in CI
+
+If OIDC authentication fails in CI:
+
+1. Ensure your CI provider supports OIDC
+2. Verify the `id-token: write` permission is set (for GitHub Actions)
+3. Check CI environment variables are correctly configured
+4. Try using a project token instead
+
+### Token Expired
+
+If you see authentication errors:
+
+```bash
+tuist auth logout
+tuist auth login
+```
+
+### Server Connection Issues
+
+Verify you can reach the server:
+
+```bash
+curl https://your-tuist-server.com/health
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Set up cache" icon="bolt" href="/cloud/cache">
+    Enable binary caching for faster builds
+  </Card>
+  <Card title="Upload previews" icon="mobile" href="/cloud/previews">
+    Share app builds with your team
+  </Card>
+</CardGroup>

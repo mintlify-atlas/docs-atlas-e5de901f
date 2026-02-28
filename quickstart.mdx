@@ -1,80 +1,387 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get started with Tuist in 5 minutes
 ---
 
-## Get started in three steps
+# Quickstart Guide
 
-Get your documentation site running locally and make your first customization.
+This guide will help you get started with Tuist, from installation to creating your first generated project.
 
-### Step 1: Set up your local environment
+## What you'll accomplish
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+<Steps>
+  <Step title="Install Tuist">
+    Set up Tuist on your development machine
+  </Step>
+  <Step title="Initialize a project">
+    Create a new project with Tuist or integrate an existing one
+  </Step>
+  <Step title="Generate and build">
+    Generate your Xcode project and build your app
+  </Step>
+  <Step title="Explore features">
+    Learn about caching, testing, and cloud services
+  </Step>
+</Steps>
 
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
+## Prerequisites
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card icon="apple" title="macOS">
+    macOS 12.0 or later (for Xcode projects)
+  </Card>
+  <Card icon="hammer" title="Xcode">
+    Xcode 14.0 or later installed
+  </Card>
+  <Card icon="cube" title="Swift">
+    Swift 5.9 or later
+  </Card>
+  <Card icon="apple" title="Command Line Tools">
+    Xcode Command Line Tools installed
+  </Card>
 </CardGroup>
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  Tuist also runs on Linux for commands that don't require Xcode, such as authentication, project management, and analytics.
 </Note>
+
+## Step 1: Install Tuist
+
+The recommended way to install Tuist is using [Mise](https://mise.jdx.dev), a versatile development tool version manager:
+
+<CodeGroup>
+
+```bash Install Mise (Homebrew)
+brew install mise
+```
+
+```bash Install Mise (curl)
+curl https://mise.run | sh
+```
+
+</CodeGroup>
+
+Once Mise is installed, you can run Tuist commands directly:
+
+```bash Run Tuist via Mise
+mise x tuist@latest -- tuist init
+```
+
+For persistent installation in your project:
+
+```bash Install Tuist in project
+cd your-project
+mise use tuist@latest
+```
+
+This creates a `.mise.toml` file that pins the Tuist version for your project, ensuring all team members use the same version.
+
+<Tip>
+  See the [Installation guide](/installation) for other installation methods including direct download and building from source.
+</Tip>
+
+## Step 2: Initialize your project
+
+<Tabs>
+  <Tab title="New project">
+    Create a new project from scratch with Tuist's interactive setup:
+
+    ```bash Create new project
+    tuist init
+    ```
+
+    The interactive CLI will guide you through:
+
+    1. **Authentication**: Log in to Tuist Cloud (free tier available)
+    2. **Project type**: Choose to create a generated project
+    3. **Project name**: Enter your app name
+    4. **Platform**: Select iOS, macOS, tvOS, watchOS, or visionOS
+    5. **Organization**: Choose or create an organization
+
+    <Accordion title="What gets created?">
+      Tuist generates a complete project structure:
+
+      ```
+      YourApp/
+      ├── Project.swift          # Project manifest
+      ├── Config.swift           # Tuist configuration (optional)
+      ├── YourApp/
+      │   ├── Sources/          # Source files
+      │   │   └── ContentView.swift
+      │   └── Resources/        # Assets and resources
+      │       └── Assets.xcassets
+      ├── .mise.toml            # Tuist version pinning
+      └── .gitignore            # Ignores generated files
+      ```
+
+      - **Project.swift**: Swift-based project definition
+      - **Sources/**: Your application code
+      - **Resources/**: Assets, storyboards, and other resources
+    </Accordion>
+  </Tab>
+  <Tab title="Existing Xcode project">
+    If you have an existing Xcode project, Tuist can integrate with it:
+
+    ```bash Initialize in existing project
+    cd your-existing-project
+    tuist init
+    ```
+
+    <Steps>
+      <Step title="Select workflow">
+        Choose "Integrate with existing Xcode project" when prompted
+      </Step>
+      <Step title="Select project">
+        Tuist detects your `.xcodeproj` or `.xcworkspace` files
+      </Step>
+      <Step title="Configure integration">
+        Connect to Tuist Cloud for caching and insights
+      </Step>
+    </Steps>
+
+    <Warning>
+      For migrating an existing Xcode project to a generated project, see the [migration guide](/guides/migrate-from-xcode) for detailed steps.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## Step 3: Generate and build
+
+Once your project is set up, generate the Xcode project:
+
+```bash Generate Xcode project
+tuist generate
+```
+
+This command:
+- Reads your `Project.swift` manifest
+- Resolves dependencies
+- Generates an `.xcodeproj` or `.xcworkspace`
+- Opens it in Xcode (unless you use `--no-open`)
+
+<CodeGroup>
+
+```bash Generate and open
+tuist generate
+```
+
+```bash Generate without opening
+tuist generate --no-open
+```
+
+```bash Clean and regenerate
+tuist clean && tuist generate
+```
+
+</CodeGroup>
+
+### Build your project
+
+You can build using Xcode or directly from the command line:
+
+<CodeGroup>
+
+```bash Build with Tuist
+tuist build
+```
+
+```bash Build specific scheme
+tuist build MyApp
+```
+
+```bash Build and run
+tuist build MyApp && tuist run MyApp
+```
+
+</CodeGroup>
+
+### Run tests
+
+```bash Run all tests
+tuist test
+```
+
+```bash Run specific test target
+tuist test MyAppTests
+```
+
+<Tip>
+  Use `tuist test --help` to see all testing options including selective testing.
+</Tip>
+
+## Step 4: Explore features
+
+Now that you have a working project, explore Tuist's powerful features:
+
+### Cache for faster builds
+
+Enable caching to speed up your builds:
+
+```swift Config.swift
+import ProjectDescription
+
+let config = Config(
+    cache: .cache(
+        profiles: [
+            .profile(name: "Development", configuration: "Debug")
+        ]
+    )
+)
+```
+
+Warm the cache:
+
+```bash
+tuist cache warm
+```
+
+<Card title="Learn more about caching" icon="bolt" href="/features/cache">
+  Discover how to optimize build times with Tuist's intelligent caching
+</Card>
+
+### Visualize your project graph
+
+Understand your project's dependencies:
+
+```bash Generate dependency graph
+tuist graph
+```
+
+This opens an interactive visualization showing:
+- Target dependencies
+- External packages
+- Dependency relationships
+
+### Share previews
+
+Share your app with stakeholders:
+
+```bash Share app preview
+tuist share MyApp
+```
+
+This uploads your app and provides a shareable link that anyone can use to install the app on their device.
+
+<Card title="Preview documentation" icon="mobile-screen" href="/features/previews">
+  Learn about app previews and distribution
+</Card>
+
+## Understanding the Project.swift manifest
+
+Your `Project.swift` file defines your project structure:
+
+```swift Project.swift
+import ProjectDescription
+
+let project = Project(
+    name: "MyApp",
+    targets: [
+        .target(
+            name: "MyApp",
+            destinations: .iOS,
+            product: .app,
+            bundleId: "com.company.myapp",
+            deploymentTargets: .iOS("16.0"),
+            infoPlist: .default,
+            sources: ["MyApp/Sources/**"],
+            resources: ["MyApp/Resources/**"],
+            dependencies: []
+        ),
+        .target(
+            name: "MyAppTests",
+            destinations: .iOS,
+            product: .unitTests,
+            bundleId: "com.company.myapp.tests",
+            sources: ["MyAppTests/Sources/**"],
+            dependencies: [
+                .target(name: "MyApp")
+            ]
+        )
+    ]
+)
+```
+
+<Card title="Project manifest reference" icon="book" href="/api/project">
+  Explore all Project.swift options and configuration
+</Card>
+
+## Common commands
+
+Here are the most frequently used Tuist commands:
+
+<CodeGroup>
+
+```bash Initialize project
+tuist init
+```
+
+```bash Generate Xcode project
+tuist generate
+```
+
+```bash Build project
+tuist build [scheme]
+```
+
+```bash Run tests
+tuist test [target]
+```
+
+```bash Clean generated files
+tuist clean
+```
+
+```bash Warm cache
+tuist cache warm
+```
+
+```bash Share app preview
+tuist share [scheme]
+```
+
+```bash Visualize dependencies
+tuist graph
+```
+
+</CodeGroup>
+
+<Card title="Full CLI reference" icon="terminal" href="/cli/init">
+  See all available commands and options
+</Card>
+
+## What's next?
+
+<CardGroup cols={2}>
+  <Card title="Core Concepts" icon="book" href="/concepts/architecture">
+    Understand Tuist's architecture and design principles
+  </Card>
+  <Card title="Project Structure" icon="folder-tree" href="/guides/project-structure">
+    Learn how to organize your code and modules
+  </Card>
+  <Card title="Dependencies" icon="cube" href="/guides/dependencies">
+    Manage Swift packages and framework dependencies
+  </Card>
+  <Card title="Build Optimization" icon="gauge-high" href="/guides/build-optimization">
+    Speed up builds with caching and optimization techniques
+  </Card>
+  <Card title="CI/CD Integration" icon="rotate" href="/guides/ci-cd">
+    Set up continuous integration with Tuist
+  </Card>
+  <Card title="Cloud Services" icon="cloud" href="/cloud/introduction">
+    Explore Tuist's cloud platform features
+  </Card>
+</CardGroup>
+
+## Need help?
+
+<CardGroup cols={3}>
+  <Card title="Documentation" icon="book" href="https://docs.tuist.dev">
+    Browse the full documentation
+  </Card>
+  <Card title="Community" icon="users" href="https://community.tuist.dev">
+    Ask questions in our community forum
+  </Card>
+  <Card title="Slack" icon="slack" href="https://join.slack.com/t/tuistapp/shared_invite/zt-1lqw355mp-zElRwLeoZ2EQsgGEkyaFgg">
+    Join the Slack workspace
+  </Card>
+</CardGroup>

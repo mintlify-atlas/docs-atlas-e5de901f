@@ -1,0 +1,355 @@
+---
+title: Dependencies
+titleTemplate: :title | API Reference | Tuist Documentation
+description: API reference for target dependencies in Tuist's ProjectDescription framework
+---
+
+# Dependencies
+
+Target dependency types that define how targets depend on other code.
+
+## Overview
+
+The `TargetDependency` enum defines all possible types of dependencies that a target can have, including dependencies on other targets, external packages, system frameworks, and prebuilt binaries.
+
+## Dependency Types
+
+### Target Dependency
+
+Depend on another target within the same project.
+
+```swift
+.target(name: "MyFramework")
+.target(name: "MyFramework", status: .optional)
+.target(name: "MyFramework", condition: .when([.ios]))
+```
+
+<ParamField path="name" type="String" required>
+  Name of the target to depend on.
+</ParamField>
+
+<ParamField path="status" type="LinkingStatus" default=".required">
+  The dependency status. Use `.optional` for weak linking, `.required` for strong linking, or `.none` to skip linking.
+</ParamField>
+
+<ParamField path="condition" type="PlatformCondition?" default="nil">
+  Condition under which to use this dependency. `nil` means always use it.
+</ParamField>
+
+### Macro Dependency
+
+Depend on a Swift macro target within the same project.
+
+```swift
+.macro(name: "MyMacro")
+```
+
+<ParamField path="name" type="String" required>
+  Name of the macro target to depend on.
+</ParamField>
+
+### Project Dependency
+
+Depend on a target within another project.
+
+```swift
+.project(target: "Framework", path: "../Framework")
+.project(target: "Framework", path: "../Framework", status: .optional)
+```
+
+<ParamField path="target" type="String" required>
+  Name of the target to depend on.
+</ParamField>
+
+<ParamField path="path" type="Path" required>
+  Relative path to the other project directory.
+</ParamField>
+
+<ParamField path="status" type="LinkingStatus" default=".required">
+  The dependency status (optional dependencies are weakly linked).
+</ParamField>
+
+<ParamField path="condition" type="PlatformCondition?" default="nil">
+  Condition under which to use this dependency.
+</ParamField>
+
+### External Dependency
+
+Depend on an external dependency imported through `Package.swift`. This is the recommended approach.
+
+```swift
+.external(name: "Alamofire")
+.external(name: "Alamofire", condition: .when([.ios]))
+```
+
+<ParamField path="name" type="String" required>
+  Name of the external dependency as declared in Package.swift.
+</ParamField>
+
+<ParamField path="condition" type="PlatformCondition?" default="nil">
+  Condition under which to use this dependency.
+</ParamField>
+
+### Package Dependency
+
+Depend on a Swift Package Manager product using Xcode native integration. **It's recommended to use `.external` instead.** For more info, check the [external dependencies documentation](https://docs.tuist.dev/en/guides/features/projects/dependencies#external-dependencies).
+
+```swift
+.package(product: "Alamofire")
+.package(product: "MyMacro", type: .macro)
+.package(product: "MyPlugin", type: .plugin)
+```
+
+<ParamField path="product" type="String" required>
+  The name of the output product (e.g., "RxSwift").
+</ParamField>
+
+<ParamField path="type" type="PackageType" default=".runtime">
+  The type of package being integrated:
+  - `.runtime` - Standard package linked at runtime
+  - `.runtimeEmbedded` - Package embedded in the product at runtime
+  - `.plugin` - Build system plugin loaded at compile-time
+  - `.macro` - Swift Macro package
+</ParamField>
+
+<ParamField path="condition" type="PlatformCondition?" default="nil">
+  Condition under which to use this dependency.
+</ParamField>
+
+### Framework Dependency
+
+Depend on a prebuilt framework.
+
+```swift
+.framework(path: "Frameworks/MyFramework.framework")
+.framework(path: "Frameworks/MyFramework.framework", status: .optional)
+```
+
+<ParamField path="path" type="Path" required>
+  Relative path to the prebuilt framework.
+</ParamField>
+
+<ParamField path="status" type="LinkingStatus" default=".required">
+  The dependency status (optional dependencies are weakly linked).
+</ParamField>
+
+<ParamField path="condition" type="PlatformCondition?" default="nil">
+  Condition under which to use this dependency.
+</ParamField>
+
+### XCFramework Dependency
+
+Depend on an XCFramework.
+
+```swift
+.xcframework(path: "Frameworks/MyFramework.xcframework")
+.xcframework(
+    path: "Frameworks/MyFramework.xcframework",
+    expectedSignature: .signedWithAppleCertificate(
+        teamIdentifier: "ABCDE12345",
+        teamName: "My Team"
+    ),
+    status: .required
+)
+```
+
+<ParamField path="path" type="Path" required>
+  Relative path to the xcframework.
+</ParamField>
+
+<ParamField path="expectedSignature" type="XCFrameworkSignature?" default="nil">
+  The expected signature if the xcframework is signed. Used for verifying integrity.
+  - `.unsigned` - The XCFramework is not signed
+  - `.signedWithAppleCertificate(teamIdentifier:teamName:)` - Signed with Apple Development certificate
+  - `.selfSigned(fingerprint:)` - Signed with self-issued code signing identity
+</ParamField>
+
+<ParamField path="status" type="LinkingStatus" default=".required">
+  The dependency status (optional dependencies are weakly linked).
+</ParamField>
+
+<ParamField path="condition" type="PlatformCondition?" default="nil">
+  Condition under which to use this dependency.
+</ParamField>
+
+### Library Dependency
+
+Depend on a prebuilt static library.
+
+```swift
+.library(
+    path: "Libraries/libMyLibrary.a",
+    publicHeaders: "Libraries/include",
+    swiftModuleMap: "Libraries/MyLibrary.swiftmodule"
+)
+```
+
+<ParamField path="path" type="Path" required>
+  Relative path to the prebuilt library.
+</ParamField>
+
+<ParamField path="publicHeaders" type="Path" required>
+  Relative path to the library's public headers directory.
+</ParamField>
+
+<ParamField path="swiftModuleMap" type="Path?" required>
+  Relative path to the library's Swift module map file.
+</ParamField>
+
+<ParamField path="condition" type="PlatformCondition?" default="nil">
+  Condition under which to use this dependency.
+</ParamField>
+
+### SDK Dependency
+
+Depend on a system library or framework.
+
+```swift
+.sdk(name: "UIKit", type: .framework)
+.sdk(name: "c++", type: .library)
+.sdk(name: "ARKit", type: .framework, status: .optional)
+```
+
+<ParamField path="name" type="String" required>
+  Name of the system library or framework without extension (e.g., "ARKit", "c++").
+</ParamField>
+
+<ParamField path="type" type="SDKType" required>
+  The dependency type:
+  - `.framework` - Framework SDK
+  - `.library` - Library SDK (in `usr/lib`)
+  - `.swiftLibrary` - Swift library SDK (in `usr/lib/swift`)
+</ParamField>
+
+<ParamField path="status" type="LinkingStatus" default=".required">
+  The dependency status (optional dependencies are weakly linked).
+</ParamField>
+
+<ParamField path="condition" type="PlatformCondition?" default="nil">
+  Condition under which to use this dependency.
+</ParamField>
+
+### XCTest Dependency
+
+Depend on XCTest framework.
+
+```swift
+.xctest
+```
+
+No parameters required.
+
+## LinkingStatus
+
+Controls how a dependency is linked:
+
+- `.required` - Required dependency (strong linking)
+- `.optional` - Optional dependency (weak linking)
+- `.none` - Skip linking entirely
+
+## PlatformCondition
+
+Allows conditional dependencies based on platform:
+
+```swift
+// Only link on iOS
+.target(name: "iOSOnlyFramework", condition: .when([.ios]))
+
+// Link on iOS and tvOS
+.framework(path: "SharedFramework.framework", condition: .when([.ios, .tvos]))
+
+// Link on all platforms except watchOS
+.external(name: "Alamofire", condition: .when([.ios, .macos, .tvos, .visionos]))
+```
+
+## Usage Examples
+
+### Basic Target with Dependencies
+
+```swift
+let target = Target.target(
+    name: "MyApp",
+    destinations: .iOS,
+    product: .app,
+    bundleId: "com.example.myapp",
+    dependencies: [
+        // Internal target
+        .target(name: "MyFramework"),
+        
+        // External package
+        .external(name: "Alamofire"),
+        
+        // System framework
+        .sdk(name: "UIKit", type: .framework),
+        
+        // Optional system framework
+        .sdk(name: "StoreKit", type: .framework, status: .optional)
+    ]
+)
+```
+
+### Cross-Project Dependencies
+
+```swift
+let target = Target.target(
+    name: "MyApp",
+    destinations: .iOS,
+    product: .app,
+    bundleId: "com.example.myapp",
+    dependencies: [
+        .project(target: "SharedUI", path: "../SharedUI"),
+        .project(target: "SharedLogic", path: "../SharedLogic")
+    ]
+)
+```
+
+### Platform-Specific Dependencies
+
+```swift
+let target = Target.target(
+    name: "MultiplatformApp",
+    destinations: [.iPhone, .iPad, .mac],
+    product: .app,
+    bundleId: "com.example.app",
+    dependencies: [
+        // Always included
+        .target(name: "SharedCore"),
+        
+        // iOS only
+        .target(name: "iOSFeatures", condition: .when([.ios])),
+        
+        // macOS only
+        .target(name: "macOSFeatures", condition: .when([.macos])),
+        
+        // iOS system framework
+        .sdk(name: "UIKit", type: .framework, condition: .when([.ios])),
+        
+        // macOS system framework
+        .sdk(name: "AppKit", type: .framework, condition: .when([.macos]))
+    ]
+)
+```
+
+### Swift Macro Dependencies
+
+```swift
+let target = Target.target(
+    name: "MyApp",
+    destinations: .iOS,
+    product: .app,
+    bundleId: "com.example.myapp",
+    dependencies: [
+        // Internal macro
+        .macro(name: "MyMacros"),
+        
+        // External macro
+        .package(product: "SwiftMacrosPackage", type: .macro)
+    ]
+)
+```
+
+## Related APIs
+
+- [Target](/api/target) - Uses dependencies
+- [Project](/api/project) - Contains targets with dependencies
+- [Settings](/api/settings) - Can affect dependency linking

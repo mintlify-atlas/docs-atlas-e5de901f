@@ -1,0 +1,455 @@
+---
+title: QA Service
+description: Streamline QA workflows with organized preview management and test case tracking
+---
+
+The Tuist QA service helps teams organize app previews, track test cases, and manage QA workflows efficiently. It builds on top of the [Previews service](/cloud/previews) to provide structured QA processes.
+
+## Overview
+
+The QA service provides:
+
+- **Test case tracking** across builds and platforms
+- **Preview organization** by QA cycle or sprint
+- **Test run management** with detailed results
+- **Attachment support** for screenshots and logs
+- **Test failure analysis** with error details
+
+```mermaid
+graph LR
+    A[Upload Preview] --> B[Create Test Plan]
+    B --> C[Run Tests]
+    C --> D[Upload Results]
+    D --> E[Analyze Failures]
+```
+
+## Prerequisites
+
+1. [Authenticate with Tuist Cloud](/cloud/authentication)
+2. [Upload a preview](/cloud/previews)
+3. Configure your project:
+
+```swift Config.swift
+import ProjectDescription
+
+let config = Config(
+    cloud: .cloud(
+        url: "https://cloud.tuist.io",
+        projectId: "your-org/your-project"
+    )
+)
+```
+
+## Test Case Management
+
+### Uploading Test Results
+
+After running tests, upload results to Tuist Cloud:
+
+```bash
+tuist test MyApp --result-bundle-path ./TestResults.xcresult
+tuist test upload ./TestResults.xcresult
+```
+
+Tuist automatically:
+
+- Parses the XCResult bundle
+- Extracts test cases and results
+- Uploads to the QA service
+- Links tests to the current build
+
+### Test Result Data
+
+Uploaded test results include:
+
+- **Test module** and suite names
+- **Test case** pass/fail status
+- **Duration** for each test
+- **Failure messages** and stack traces
+- **Attachments** (screenshots, logs)
+
+### Manual Test Upload
+
+Specify a build to associate with test results:
+
+```bash
+tuist test upload ./TestResults.xcresult --build-id abc123
+```
+
+## Viewing Test Results
+
+### List Test Runs
+
+View all test runs for your project:
+
+```bash
+tuist test list
+```
+
+Filter by status:
+
+```bash
+tuist test list --status failed
+```
+
+### Test Run Details
+
+Get detailed information about a test run:
+
+```bash
+tuist test show run-id-123
+```
+
+Displays:
+- Total tests passed/failed/skipped
+- Test duration
+- Associated build information
+- Git commit details
+- Environment (Xcode version, OS version)
+
+### Test Case History
+
+View the history of a specific test case:
+
+```bash
+tuist test case-history MyAppTests.testUserLogin
+```
+
+Shows:
+- Recent pass/fail trend
+- Average duration
+- Failure patterns
+- Related builds
+
+## Test Attachments
+
+Test attachments (screenshots, logs, videos) are automatically uploaded with test results:
+
+### Screenshot Attachments
+
+When tests capture screenshots, they're uploaded and viewable in the web interface:
+
+```swift MyAppTests.swift
+import XCTest
+
+class MyAppTests: XCTestCase {
+    func testCheckout() {
+        let app = XCUIApplication()
+        app.launch()
+        
+        // Screenshot is automatically captured on failure
+        let checkoutButton = app.buttons["Checkout"]
+        XCTAssertTrue(checkoutButton.exists)
+        
+        // Manual screenshot
+        let screenshot = app.screenshot()
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+}
+```
+
+### Log Attachments
+
+Attach logs for debugging:
+
+```swift
+let logAttachment = XCTAttachment(
+    string: "Detailed log output here"
+)
+logAttachment.lifetime = .keepAlways
+add(logAttachment)
+```
+
+## Test Case Organization
+
+### Test Suites
+
+Tests are automatically organized by suite:
+
+```
+MyAppTests
+├── LoginTests
+│   ├── testValidLogin ✓
+│   ├── testInvalidPassword ✗
+│   └── testForgotPassword ✓
+├── CheckoutTests
+│   ├── testAddToCart ✓
+│   └── testPayment ✓
+└── ProfileTests
+    └── testUpdateProfile ⊘ (skipped)
+```
+
+### Test Modules
+
+Multiple test modules are supported:
+
+- Unit tests
+- UI tests
+- Integration tests
+
+Each module's results are tracked separately.
+
+## CI/CD Integration
+
+Automate test result uploads in your CI pipeline:
+
+### GitHub Actions Example
+
+```yaml .github/workflows/test.yml
+name: Test
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Tuist
+        run: curl -Ls https://install.tuist.io | bash
+      
+      - name: Authenticate
+        run: tuist auth login
+      
+      - name: Run tests
+        run: |
+          tuist test MyApp \
+            --result-bundle-path ./TestResults.xcresult
+      
+      - name: Upload test results
+        if: always()  # Upload even if tests fail
+        run: tuist test upload ./TestResults.xcresult
+      
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: ./TestResults.xcresult
+```
+
+### GitLab CI Example
+
+```yaml .gitlab-ci.yml
+test:
+  stage: test
+  script:
+    - curl -Ls https://install.tuist.io | bash
+    - tuist auth login
+    - tuist test MyApp --result-bundle-path ./TestResults.xcresult
+    - tuist test upload ./TestResults.xcresult
+  artifacts:
+    when: always
+    paths:
+      - TestResults.xcresult
+    reports:
+      junit: TestResults.xcresult/junit.xml
+```
+
+## QA Workflows
+
+### Linking Previews to Test Runs
+
+Associate test runs with specific preview builds:
+
+```bash
+# Upload preview
+PREVIEW_ID=$(tuist share MyApp | grep -o 'preview/[^[:space:]]*' | cut -d'/' -f2)
+
+# Run tests
+tuist test MyApp --result-bundle-path ./TestResults.xcresult
+
+# Upload results linked to preview
+tuist test upload ./TestResults.xcresult --preview-id $PREVIEW_ID
+```
+
+### Test Plans
+
+Organize tests by QA cycle or sprint:
+
+```bash
+# Create a test plan for Sprint 42
+tuist test plan create "Sprint 42 QA" --description "Testing new checkout flow"
+
+# Associate test runs with the plan
+tuist test upload ./TestResults.xcresult --plan "Sprint 42 QA"
+```
+
+## Test Analytics
+
+The QA service provides analytics on:
+
+- **Flaky tests**: Tests that intermittently fail
+- **Slow tests**: Tests with increasing duration
+- **Failure trends**: Tests that fail frequently
+- **Coverage**: Test coverage over time
+
+### Flaky Test Detection
+
+Tuist automatically identifies flaky tests by analyzing:
+
+- Multiple runs of the same test
+- Inconsistent pass/fail patterns
+- Repetition results
+
+### Test Duration Trends
+
+Track test performance over time:
+
+```bash
+tuist test trends
+```
+
+Shows:
+- Tests with increasing duration
+- Slowest tests
+- Total test suite duration trends
+
+## Web Interface
+
+The Tuist Cloud web interface provides:
+
+- **Dashboard** with test run overview
+- **Test case browser** with filtering and search
+- **Failure analysis** with screenshots and logs
+- **Trend charts** for test metrics
+- **QA reports** for stakeholders
+
+Access at: `https://cloud.tuist.io/your-org/your-project/qa`
+
+## Test Notifications
+
+Configure notifications for test failures:
+
+```swift Config.swift
+let config = Config(
+    cloud: .cloud(
+        url: "https://cloud.tuist.io",
+        projectId: "your-org/your-project",
+        options: .options(
+            notifications: .notifications(
+                testFailures: .slack(
+                    webhookURL: "https://hooks.slack.com/..."
+                )
+            )
+        )
+    )
+)
+```
+
+## Selective Testing
+
+Use test history to run only relevant tests:
+
+```bash
+tuist test --selective
+```
+
+<Card title="Learn more about selective testing" icon="flask" href="/features/selective-testing">
+  Discover how to speed up test runs with selective testing
+</Card>
+
+## Advanced Features
+
+### Test Repetition Tracking
+
+When using Xcode's test repetition feature, Tuist tracks each repetition:
+
+```bash
+xcodebuild test \
+  -workspace MyApp.xcworkspace \
+  -scheme MyApp \
+  -test-iterations 5 \
+  -result-bundle-path ./TestResults.xcresult
+
+tuist test upload ./TestResults.xcresult
+```
+
+The QA service shows:
+- Which repetitions passed/failed
+- Flakiness indicators
+- Per-repetition duration
+
+### Custom Test Metadata
+
+Add custom metadata to test runs:
+
+```bash
+tuist test upload ./TestResults.xcresult \
+  --metadata "sprint=42" \
+  --metadata "tester=john"
+```
+
+### Test Case Grouping
+
+Group tests by feature or area:
+
+```swift
+class LoginTests: XCTestCase {
+    override class var defaultTestSuite: XCTestSuite {
+        let suite = XCTestSuite(name: "Login Feature")
+        suite.addTest(defaultTestSuite)
+        return suite
+    }
+}
+```
+
+## Troubleshooting
+
+### Test Upload Fails
+
+If test result upload fails:
+
+1. Verify the XCResult bundle exists
+2. Check authentication: `tuist auth whoami`
+3. Ensure sufficient storage quota
+
+### Missing Test Attachments
+
+If attachments aren't showing:
+
+1. Verify attachment lifetime is `.keepAlways`
+2. Check attachment size limits (50MB per file)
+3. Ensure XCResult bundle includes attachments
+
+### Test Results Not Linked to Build
+
+If tests aren't linked to the correct build:
+
+```bash
+# Explicitly specify the build ID
+tuist test upload ./TestResults.xcresult --build-id abc123
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always upload test results, even on failure">
+    Upload test results from CI even when tests fail. Failure data is valuable for tracking issues.
+  </Accordion>
+  
+  <Accordion title="Use test plans for organized QA cycles">
+    Create test plans for each sprint or release cycle to organize QA efforts.
+  </Accordion>
+  
+  <Accordion title="Review flaky test reports regularly">
+    Monitor flaky tests and fix them to improve build reliability.
+  </Accordion>
+  
+  <Accordion title="Capture screenshots on test failure">
+    Configure UI tests to automatically capture screenshots when assertions fail.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Test Insights" icon="chart-line" href="/cloud/insights">
+    Analyze test metrics and identify improvement opportunities
+  </Card>
+  <Card title="Selective Testing" icon="flask" href="/features/selective-testing">
+    Speed up test runs by testing only what changed
+  </Card>
+</CardGroup>

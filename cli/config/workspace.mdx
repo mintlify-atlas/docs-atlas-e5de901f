@@ -1,0 +1,304 @@
+---
+title: "Workspace.swift"
+description: "Workspace manifest for organizing multiple projects"
+---
+
+## Overview
+
+`Workspace.swift` is an optional manifest file that defines an Xcode workspace containing multiple projects. By default, `tuist generate` creates a workspace automatically, but you can use `Workspace.swift` to customize which projects are included and how they're organized.
+
+## Location
+
+Place `Workspace.swift` at the root of your repository or in the directory where you want to generate the workspace:
+
+```
+/Workspace.swift         # Generates Workspace.xcworkspace
+/Tuist.swift            # Configuration
+/App/Project.swift      # Individual projects
+/Framework/Project.swift
+/Shared/Project.swift
+```
+
+## When to use Workspace.swift
+
+Use `Workspace.swift` when you need to:
+
+- Include multiple independent projects in a single workspace
+- Add documentation files to the workspace
+- Define custom workspace-level schemes
+- Organize projects that don't have dependencies between them
+- Control the exact structure of the generated workspace
+
+## Basic structure
+
+```swift
+import ProjectDescription
+
+let workspace = Workspace(
+    name: "MyWorkspace",
+    projects: ["Projects/**"]
+)
+```
+
+## Properties
+
+### name
+
+<ParamField path="name" type="String" required>
+  The name of the workspace. Also used as the file name of the generated Xcode workspace (e.g., `MyWorkspace.xcworkspace`).
+</ParamField>
+
+### projects
+
+<ParamField path="projects" type="[Path]" required>
+  The paths (or glob patterns) to project manifest directories. Tuist will look for `Project.swift` files in these locations.
+</ParamField>
+
+### schemes
+
+<ParamField path="schemes" type="[Scheme]" default="[]">
+  Custom workspace-level schemes. Default schemes for each target are generated automatically by default.
+</ParamField>
+
+### fileHeaderTemplate
+
+<ParamField path="fileHeaderTemplate" type="FileHeaderTemplate?" default="nil">
+  The custom file header template for Xcode built-in file templates, applied to all projects in the workspace.
+</ParamField>
+
+### additionalFiles
+
+<ParamField path="additionalFiles" type="[FileElement]" default="[]">
+  Additional files to include in the workspace (e.g., documentation, README files) that aren't part of any specific project.
+</ParamField>
+
+### generationOptions
+
+<ParamField path="generationOptions" type="GenerationOptions" default=".options()">
+  Options that control workspace generation behavior.
+</ParamField>
+
+## Examples
+
+### Simple workspace
+
+```swift
+import ProjectDescription
+
+let workspace = Workspace(
+    name: "MyWorkspace",
+    projects: [
+        "App",
+        "Framework",
+        "SharedKit"
+    ]
+)
+```
+
+### With glob patterns
+
+```swift
+import ProjectDescription
+
+let workspace = Workspace(
+    name: "MyWorkspace",
+    projects: [
+        "Projects/**",
+        "Features/**",
+        "Frameworks/**"
+    ]
+)
+```
+
+This includes all `Project.swift` files found in the `Projects`, `Features`, and `Frameworks` directories and their subdirectories.
+
+### With additional files
+
+```swift
+import ProjectDescription
+
+let workspace = Workspace(
+    name: "MyWorkspace",
+    projects: ["Projects/**"],
+    additionalFiles: [
+        "README.md",
+        "CONTRIBUTING.md",
+        "Documentation/**",
+        .folderReference(path: "Scripts")
+    ]
+)
+```
+
+### With custom schemes
+
+```swift
+import ProjectDescription
+
+let workspace = Workspace(
+    name: "MyWorkspace",
+    projects: ["Projects/**"],
+    schemes: [
+        Scheme(
+            name: "All-Tests",
+            shared: true,
+            buildAction: .buildAction(targets: ["App", "Framework"]),
+            testAction: .targets(["AppTests", "FrameworkTests"])
+        ),
+        Scheme(
+            name: "All-Apps",
+            shared: true,
+            buildAction: .buildAction(targets: ["App", "WatchApp", "TVApp"])
+        )
+    ]
+)
+```
+
+### With file header template
+
+```swift
+import ProjectDescription
+
+let workspace = Workspace(
+    name: "MyWorkspace",
+    projects: ["Projects/**"],
+    fileHeaderTemplate: .string(
+        """
+        //
+        //  ___FILENAME___
+        //  ___PACKAGENAME___
+        //
+        //  Created by ___FULLUSERNAME___ on ___DATE___.
+        //  Copyright © ___YEAR___ ___ORGANIZATIONNAME___. All rights reserved.
+        //
+        """
+    )
+)
+```
+
+### With generation options
+
+```swift
+import ProjectDescription
+
+let workspace = Workspace(
+    name: "MyWorkspace",
+    projects: ["Projects/**"],
+    generationOptions: .options(
+        resolveDependenciesWithSystemScm: false,
+        disablePackageVersionLocking: false
+    )
+)
+```
+
+## Project organization patterns
+
+### Feature-based organization
+
+```
+/Workspace.swift
+/Features/
+  /Login/Project.swift
+  /Dashboard/Project.swift
+  /Settings/Project.swift
+/Core/
+  /Networking/Project.swift
+  /Database/Project.swift
+```
+
+```swift
+import ProjectDescription
+
+let workspace = Workspace(
+    name: "App",
+    projects: [
+        "Features/**",
+        "Core/**"
+    ]
+)
+```
+
+### Layer-based organization
+
+```
+/Workspace.swift
+/Apps/
+  /iOS/Project.swift
+  /macOS/Project.swift
+/Frameworks/
+  /UI/Project.swift
+  /Core/Project.swift
+/Tests/
+  /IntegrationTests/Project.swift
+```
+
+```swift
+import ProjectDescription
+
+let workspace = Workspace(
+    name: "MyWorkspace",
+    projects: [
+        "Apps/**",
+        "Frameworks/**",
+        "Tests/**"
+    ]
+)
+```
+
+## Workspace schemes
+
+Workspace schemes allow you to define build and test actions that span multiple projects:
+
+```swift
+Scheme(
+    name: "All-Features",
+    shared: true,
+    buildAction: .buildAction(
+        targets: [
+            "LoginFeature",
+            "DashboardFeature",
+            "SettingsFeature"
+        ]
+    ),
+    testAction: .targets([
+        "LoginTests",
+        "DashboardTests",
+        "SettingsTests"
+    ]),
+    runAction: .runAction(
+        executable: "App"
+    )
+)
+```
+
+## Best practices
+
+<CardGroup cols={2}>
+  <Card title="Glob patterns" icon="asterisk">
+    Use glob patterns to automatically include new projects without updating the workspace manifest.
+  </Card>
+  <Card title="Documentation" icon="book">
+    Include documentation files in `additionalFiles` to make them easily accessible in Xcode.
+  </Card>
+  <Card title="Shared schemes" icon="share-nodes">
+    Create workspace-level schemes for common operations like running all tests or building multiple apps.
+  </Card>
+  <Card title="Consistent structure" icon="folder-tree">
+    Organize projects in a clear directory structure that matches your team's mental model.
+  </Card>
+</CardGroup>
+
+## Default behavior without Workspace.swift
+
+If you don't create a `Workspace.swift` file, Tuist automatically:
+
+1. Finds all `Project.swift` files in the current directory and subdirectories
+2. Generates a workspace with the name of the current directory
+3. Includes all discovered projects in the workspace
+
+For simple projects or monorepos with a flat structure, this default behavior may be sufficient.
+
+## Related
+
+- [Project.swift reference](/cli/config/project)
+- [Tuist.swift reference](/cli/config/tuist-config)
+- [Generate command](/cli/generate)

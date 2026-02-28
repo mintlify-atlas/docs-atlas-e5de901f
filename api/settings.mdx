@@ -1,0 +1,325 @@
+---
+title: Settings
+titleTemplate: :title | API Reference | Tuist Documentation
+description: API reference for the Settings type in Tuist's ProjectDescription framework
+---
+
+# Settings
+
+A group of build settings configuration for projects and targets.
+
+## Overview
+
+The `Settings` type allows you to define build settings, configurations, and xcconfig files for both projects and targets. Settings can be defined at different levels and are merged according to Xcode's build setting resolution rules.
+
+## Basic Usage
+
+```swift
+import ProjectDescription
+
+let settings = Settings.settings(
+    base: [
+        "SWIFT_VERSION": "5.9",
+        "ENABLE_BITCODE": "NO"
+    ],
+    debug: [
+        "SWIFT_OPTIMIZATION_LEVEL": "-Onone",
+        "GCC_PREPROCESSOR_DEFINITIONS": ["DEBUG=1"]
+    ],
+    release: [
+        "SWIFT_OPTIMIZATION_LEVEL": "-O",
+        "SWIFT_COMPILATION_MODE": "wholemodule"
+    ]
+)
+```
+
+## Custom Configurations
+
+```swift
+let settings = Settings.settings(
+    base: [
+        "SWIFT_VERSION": "5.9"
+    ],
+    configurations: [
+        .debug(name: "Debug", settings: [
+            "SWIFT_OPTIMIZATION_LEVEL": "-Onone"
+        ]),
+        .debug(name: "Staging", settings: [
+            "SWIFT_OPTIMIZATION_LEVEL": "-Onone",
+            "API_URL": "https://staging.example.com"
+        ]),
+        .release(name: "Release", settings: [
+            "SWIFT_OPTIMIZATION_LEVEL": "-O"
+        ])
+    ]
+)
+```
+
+## With XCConfig Files
+
+```swift
+let settings = Settings.settings(
+    base: [
+        "SWIFT_VERSION": "5.9"
+    ],
+    configurations: [
+        .debug(name: "Debug", settings: [:], xcconfig: "Configs/Debug.xcconfig"),
+        .release(name: "Release", settings: [:], xcconfig: "Configs/Release.xcconfig")
+    ]
+)
+```
+
+## Simple Settings (Default Configurations)
+
+### `.settings()` Method
+
+Creates settings with default Debug and Release configurations.
+
+<ParamField path="base" type="SettingsDictionary" default="[:]">
+  A dictionary with build settings inherited by all configurations.
+</ParamField>
+
+<ParamField path="debug" type="SettingsDictionary" default="[:]">
+  Build settings specific to the Debug configuration.
+</ParamField>
+
+<ParamField path="release" type="SettingsDictionary" default="[:]">
+  Build settings specific to the Release configuration.
+</ParamField>
+
+<ParamField path="defaultSettings" type="DefaultSettings" default=".recommended">
+  An enum specifying the set of default settings. See DefaultSettings section below.
+</ParamField>
+
+<ParamField path="defaultConfiguration" type="String?" default="nil">
+  The default configuration to be used when building from the command line.
+</ParamField>
+
+## Custom Configurations Settings
+
+### `.settings(configurations:)` Method
+
+Creates settings with custom configurations.
+
+<ParamField path="base" type="SettingsDictionary" default="[:]">
+  A dictionary with build settings inherited by all configurations.
+</ParamField>
+
+<ParamField path="configurations" type="[Configuration]" required>
+  A list of custom configurations. Should not be empty - use the simpler method for default Debug/Release configurations.
+</ParamField>
+
+<ParamField path="defaultSettings" type="DefaultSettings" default=".recommended">
+  An enum specifying the set of default settings.
+</ParamField>
+
+<ParamField path="defaultConfiguration" type="String?" default="nil">
+  The default configuration to be used when building from the command line.
+</ParamField>
+
+## Configuration
+
+Represents a build configuration (Debug or Release variant).
+
+### Debug Configuration
+
+```swift
+Configuration.debug(
+    name: "Debug",
+    settings: [
+        "SWIFT_OPTIMIZATION_LEVEL": "-Onone",
+        "DEBUG_INFORMATION_FORMAT": "dwarf-with-dsym"
+    ],
+    xcconfig: "Configs/Debug.xcconfig"
+)
+```
+
+<ParamField path="name" type="ConfigurationName" required>
+  The name of the configuration to use.
+</ParamField>
+
+<ParamField path="settings" type="SettingsDictionary" default="[:]">
+  The build settings to apply for this configuration.
+</ParamField>
+
+<ParamField path="xcconfig" type="Path?" default="nil">
+  The xcconfig file to associate with this configuration.
+</ParamField>
+
+### Release Configuration
+
+```swift
+Configuration.release(
+    name: "Release",
+    settings: [
+        "SWIFT_OPTIMIZATION_LEVEL": "-O",
+        "SWIFT_COMPILATION_MODE": "wholemodule"
+    ],
+    xcconfig: "Configs/Release.xcconfig"
+)
+```
+
+Parameters are the same as debug configuration.
+
+## SettingValue
+
+Represents a build setting value, which can be a string, array of strings, or boolean.
+
+### String Value
+
+```swift
+"SWIFT_VERSION": "5.9"
+```
+
+### Array Value
+
+```swift
+"OTHER_SWIFT_FLAGS": ["-D", "DEBUG", "-enable-testing"]
+```
+
+### Boolean Value
+
+```swift
+"ENABLE_BITCODE": true  // Converts to "YES"
+"ENABLE_TESTABILITY": false  // Converts to "NO"
+```
+
+### From RawRepresentable
+
+```swift
+enum Environment: String {
+    case development = "DEVELOPMENT"
+    case production = "PRODUCTION"
+}
+
+"ENVIRONMENT": SettingValue(Environment.development)
+```
+
+## DefaultSettings
+
+Specifies the default set of settings applied to projects and targets.
+
+### `.recommended`
+
+```swift
+defaultSettings: .recommended
+```
+
+Recommended settings including warning flags to help catch bugs early. This is the default.
+
+### `.recommended(excluding:)`
+
+```swift
+defaultSettings: .recommended(excluding: ["SWIFT_VERSION", "IPHONEOS_DEPLOYMENT_TARGET"])
+```
+
+Recommended settings with specific keys excluded, allowing you to override them in custom configurations.
+
+### `.essential`
+
+```swift
+defaultSettings: .essential
+```
+
+A minimal set of settings to make the project compile (e.g., `PRODUCT_NAME`, `TARGETED_DEVICE_FAMILY`).
+
+### `.essential(excluding:)`
+
+```swift
+defaultSettings: .essential(excluding: ["PRODUCT_NAME"])
+```
+
+Essential settings with specific keys excluded.
+
+### `.none`
+
+```swift
+defaultSettings: .none
+```
+
+Tuist won't generate any default build settings. You must provide all necessary settings manually.
+
+## Examples
+
+### Project-Level Settings
+
+```swift
+let project = Project(
+    name: "MyProject",
+    settings: .settings(
+        base: [
+            "SWIFT_VERSION": "5.9",
+            "IPHONEOS_DEPLOYMENT_TARGET": "15.0"
+        ],
+        configurations: [
+            .debug(name: "Debug"),
+            .release(name: "Release")
+        ],
+        defaultSettings: .recommended
+    ),
+    targets: [...]
+)
+```
+
+### Target-Level Settings
+
+```swift
+let target = Target.target(
+    name: "MyApp",
+    destinations: .iOS,
+    product: .app,
+    bundleId: "com.example.myapp",
+    settings: .settings(
+        base: [
+            "PRODUCT_BUNDLE_IDENTIFIER": "com.example.myapp",
+            "CODE_SIGN_STYLE": "Automatic"
+        ],
+        debug: [
+            "CODE_SIGN_ENTITLEMENTS": "Debug.entitlements"
+        ],
+        release: [
+            "CODE_SIGN_ENTITLEMENTS": "Release.entitlements"
+        ]
+    )
+)
+```
+
+### Multiple Environments
+
+```swift
+let settings = Settings.settings(
+    base: [
+        "SWIFT_VERSION": "5.9"
+    ],
+    configurations: [
+        .debug(name: "Debug", settings: [
+            "API_URL": "http://localhost:8080"
+        ]),
+        .debug(name: "Staging", settings: [
+            "API_URL": "https://staging-api.example.com"
+        ]),
+        .release(name: "Production", settings: [
+            "API_URL": "https://api.example.com"
+        ])
+    ],
+    defaultConfiguration: "Debug"
+)
+```
+
+## Setting Resolution Order
+
+Build settings are resolved in this order (later overrides earlier):
+
+1. Tuist's default settings (if `.recommended` or `.essential`)
+2. Project base settings
+3. Project configuration settings
+4. Project xcconfig file
+5. Target base settings
+6. Target configuration settings
+7. Target xcconfig file
+
+## Related APIs
+
+- [Project](/api/project) - Can have project-level settings
+- [Target](/api/target) - Can have target-level settings
+- [Scheme](/api/scheme) - References configurations in actions

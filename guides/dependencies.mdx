@@ -1,0 +1,652 @@
+---
+title: 'Managing Dependencies'
+description: 'Learn how to manage internal and external dependencies in Tuist projects'
+icon: 'box'
+---
+
+## Overview
+
+Dependencies in Tuist can be internal (between your own targets) or external (third-party packages and frameworks). Tuist provides a robust dependency management system that validates your dependency graph and prevents common issues.
+
+## Why Tuist's Approach is Different
+
+Unlike Xcode projects where dependency graphs can be error-prone and implicit, Tuist makes dependencies **explicit** and **static**. This enables:
+
+- **Validation**: Automatic detection of cycles and invalid dependencies
+- **Optimization**: Binary caching and selective testing
+- **Consistency**: Guaranteed correct linking and embedding
+- **Simplicity**: Focus on what depends on what, not implementation details
+
+<Tip>
+Tuist automatically handles complex details like transitive dynamic dependencies, static XCFramework processing, and proper linking configurations.
+</Tip>
+
+## Internal Dependencies
+
+Internal dependencies are connections between targets in your project.
+
+### Dependency Types
+
+When defining a target, use the `dependencies` parameter with these types:
+
+<CodeGroup>
+
+```swift Target Dependency
+.target(
+    name: "App",
+    dependencies: [
+        .target(name: "FeatureA")  // Same project
+    ]
+)
+```
+
+```swift Project Dependency
+.target(
+    name: "App",
+    dependencies: [
+        .project(target: "Core", path: "../Core")  // Different project
+    ]
+)
+```
+
+```swift Framework Dependency
+.target(
+    name: "App",
+    dependencies: [
+        .framework(path: "Frameworks/MyFramework.framework")
+    ]
+)
+```
+
+```swift Library Dependency
+.target(
+    name: "App",
+    dependencies: [
+        .library(path: "Libraries/MyLibrary.a", publicHeaders: "Headers/", swiftModuleMap: nil)
+    ]
+)
+```
+
+```swift XCFramework Dependency
+.target(
+    name: "App",
+    dependencies: [
+        .xcframework(path: "Frameworks/MyFramework.xcframework")
+    ]
+)
+```
+
+```swift SDK Dependency
+.target(
+    name: "App",
+    dependencies: [
+        .sdk(name: "StoreKit", type: .framework, status: .required)
+    ]
+)
+```
+
+```swift XCTest Dependency
+.target(
+    name: "AppTests",
+    product: .unitTests,
+    dependencies: [
+        .target(name: "App"),
+        .xctest
+    ]
+)
+```
+
+</CodeGroup>
+
+### Conditional Dependencies
+
+Link dependencies only for specific platforms:
+
+```swift Project.swift
+.target(
+    name: "App",
+    dependencies: [
+        .target(name: "CoreFeature"),
+        .target(name: "iOSOnlyFeature", condition: .when([.ios])),
+        .target(name: "macOSOnlyFeature", condition: .when([.macos]))
+    ]
+)
+```
+
+### Dependency Graph Best Practices
+
+#### Layered Architecture
+
+Organize dependencies in clear layers:
+
+```bash
+App Layer
+  ↓ depends on
+Feature Layer
+  ↓ depends on
+Core Layer
+  ↓ depends on
+External Dependencies
+```
+
+<Warning>
+Avoid circular dependencies. Tuist validates the dependency graph and will error if cycles are detected.
+</Warning>
+
+#### Visualize Your Graph
+
+Use Tuist's graph command to understand dependencies:
+
+```bash
+# Generate visual graph
+tuist graph
+
+# Export to specific format
+tuist graph --format png
+tuist graph --format json
+```
+
+## External Dependencies
+
+Tuist supports multiple ways to integrate external dependencies.
+
+### Swift Packages (Recommended)
+
+Swift Packages are the recommended approach for external dependencies.
+
+#### XcodeProj-Based Integration
+
+Tuist's default integration method provides more control and enables caching:
+
+<Steps>
+
+### Step 1: Create Package Manifest
+
+Create `Tuist/Package.swift` or `Package.swift` at the project root:
+
+```swift Tuist/Package.swift
+// swift-tools-version: 5.9
+import PackageDescription
+
+#if TUIST
+    import ProjectDescription
+
+    let packageSettings = PackageSettings(
+        productTypes: [
+            "Alamofire": .framework,  // Override default (.staticFramework)
+        ],
+        baseSettings: .settings(configurations: [
+            .debug(name: "Debug"),
+            .release(name: "Release")
+        ])
+    )
+#endif
+
+let package = Package(
+    name: "MyApp",
+    dependencies: [
+        .package(url: "https://github.com/Alamofire/Alamofire", from: "5.0.0"),
+        .package(url: "https://github.com/onevcat/Kingfisher", .upToNextMajor(from: "7.12.0")),
+    ]
+)
+```
+
+<Note>
+If your project uses custom build configurations (not standard Debug/Release), specify them in `baseSettings` to ensure dependencies build correctly.
+</Note>
+
+### Step 2: Install Dependencies
+
+Resolve and fetch dependencies:
+
+```bash
+tuist install
+```
+
+This downloads packages to `Tuist/Dependencies/`.
+
+<Tip>
+Like CocoaPods, dependency resolution is a separate command. This gives you control over when dependencies update and ensures Xcode opens ready to compile.
+</Tip>
+
+### Step 3: Reference in Targets
+
+Use `.external()` to reference packages:
+
+```swift Project.swift
+import ProjectDescription
+
+let project = Project(
+    name: "App",
+    targets: [
+        .target(
+            name: "App",
+            destinations: [.iPhone],
+            product: .app,
+            bundleId: "dev.tuist.app",
+            sources: ["Sources/**"],
+            dependencies: [
+                .external(name: "Alamofire"),
+                .external(name: "Kingfisher")
+            ]
+        )
+    ]
+)
+```
+
+</Steps>
+
+#### Xcode's Default Integration
+
+For simpler projects or when you need Xcode's native SPM integration:
+
+```swift Project.swift
+let project = Project(
+    name: "MyProject",
+    packages: [
+        .remote(
+            url: "https://github.com/krzyzanowskim/CryptoSwift",
+            requirement: .exact("1.8.0")
+        )
+    ],
+    targets: [
+        .target(
+            name: "MyTarget",
+            dependencies: [
+                .package(product: "CryptoSwift", type: .runtime)
+            ]
+        )
+    ]
+)
+```
+
+**Dependency types**:
+- `.runtime` - Standard dependency
+- `.macro` - Swift macros
+- `.plugin` - Build tool plugins
+
+<Warning>
+SPM build tool plugins must use Xcode's default integration, even when using XcodeProj-based integration for other dependencies.
+</Warning>
+
+#### Build Tool Plugin Example
+
+```swift Project.swift
+import ProjectDescription
+
+let project = Project(
+    name: "Framework",
+    packages: [
+        .remote(
+            url: "https://github.com/SimplyDanny/SwiftLintPlugins",
+            requirement: .upToNextMajor(from: "0.56.1")
+        )
+    ],
+    targets: [
+        .target(
+            name: "Framework",
+            dependencies: [
+                .package(product: "SwiftLintBuildToolPlugin", type: .plugin)
+            ]
+        )
+    ]
+)
+```
+
+### Binary Targets
+
+Include binary frameworks directly in Package.swift:
+
+```swift Tuist/Package.swift
+let package = Package(
+    name: "MyApp",
+    dependencies: [],
+    targets: [
+        .binaryTarget(
+            name: "Sentry",
+            url: "https://github.com/getsentry/sentry-cocoa/releases/download/8.40.1/Sentry.xcframework.zip",
+            checksum: "db928e6fdc30de1aa97200576d86d467880df710cf5eeb76af23997968d7b2c7"
+        )
+    ]
+)
+```
+
+Reference like any other external dependency:
+
+```swift
+dependencies: [
+    .external(name: "Sentry")
+]
+```
+
+### Carthage
+
+Integrate Carthage dependencies as frameworks:
+
+<Steps>
+
+### Step 1: Run Carthage
+
+```bash
+carthage update --platform iOS
+```
+
+### Step 2: Reference Frameworks
+
+```swift Project.swift
+.target(
+    name: "App",
+    dependencies: [
+        .xcframework(path: "Carthage/Build/MyFramework.xcframework")
+    ]
+)
+```
+
+### Step 3: Create Build Script
+
+```bash build.sh
+#!/usr/bin/env bash
+
+carthage update
+tuist generate
+```
+
+</Steps>
+
+<Warning>
+Ensure Carthage dependencies are present before running `xcodebuild` or `tuist test`.
+</Warning>
+
+### CocoaPods
+
+Integrate CocoaPods after generating the project:
+
+<Steps>
+
+### Step 1: Create Build Script
+
+```bash build.sh
+#!/usr/bin/env bash
+
+tuist generate
+pod install
+```
+
+### Step 2: Use Generated Workspace
+
+Open the `.xcworkspace` file created by CocoaPods, not the Tuist-generated workspace.
+
+</Steps>
+
+<Warning>
+CocoaPods dependencies are incompatible with Tuist's `build`, `test`, binary caching, and selective testing features.
+</Warning>
+
+## Static vs Dynamic Linking
+
+The choice between static and dynamic linking significantly impacts app size and boot time.
+
+### General Guidelines
+
+- **Release builds**: Link as much as possible statically for fast boot times
+- **Debug builds**: Link as much as possible dynamically for fast iteration
+
+### Configuring Linking Type
+
+Use environment variables to change linking at generation time:
+
+```swift Project.swift
+import ProjectDescription
+
+func productType() -> Product {
+    if case let .string(linking) = Environment.linking {
+        return linking == "static" ? .staticFramework : .framework
+    } else {
+        return .framework
+    }
+}
+
+let project = Project(
+    name: "MyFeature",
+    targets: [
+        .target(
+            name: "MyFeature",
+            product: productType(),
+            // ...
+        )
+    ]
+)
+```
+
+Generate with different linking:
+
+```bash
+# Dynamic linking
+tuist generate
+
+# Static linking
+LINKING=static tuist generate
+```
+
+### Special Scenarios
+
+#### Apps with Extensions
+
+Shared code between app and extensions should be dynamic to avoid duplication:
+
+```swift Project.swift
+.target(name: "SharedKit", product: .framework),  // Dynamic
+.target(name: "App", dependencies: [.target(name: "SharedKit")]),
+.target(name: "ShareExtension", dependencies: [.target(name: "SharedKit")])
+```
+
+#### Static Side Effects
+
+<Warning>
+Tuist warns about "static side effects" - when a static target is linked transitively through dynamic targets. This can increase binary size or cause runtime crashes.
+</Warning>
+
+## Troubleshooting
+
+### Objective-C Dependencies
+
+Objective-C dependencies may require the `-ObjC` linker flag:
+
+```swift Project.swift
+.target(
+    name: "App",
+    settings: .settings(
+        base: ["OTHER_LDFLAGS": "$(inherited) -ObjC"]
+    ),
+    dependencies: [
+        .external(name: "ObjectiveCPackage")
+    ]
+)
+```
+
+### Firebase and Google Libraries
+
+#### Add -ObjC Flag
+
+```swift Project.swift
+.target(
+    name: "App",
+    settings: .settings(
+        base: ["OTHER_LDFLAGS": "$(inherited) -ObjC"]
+    ),
+    dependencies: [
+        .external(name: "FirebaseAnalytics")
+    ]
+)
+```
+
+#### Configure FBLPromises
+
+Set `FBLPromises` to dynamic framework:
+
+```swift Tuist/Package.swift
+let packageSettings = PackageSettings(
+    productTypes: [
+        "FBLPromises": .framework
+    ]
+)
+```
+
+### The Composable Architecture
+
+Link all TCA dependencies dynamically:
+
+```swift Tuist/Package.swift
+#if TUIST
+import ProjectDescription
+
+let packageSettings = PackageSettings(
+    productTypes: [
+        "ComposableArchitecture": .framework,
+        "Dependencies": .framework,
+        "CasePaths": .framework,
+        // ... all other TCA packages
+    ],
+    targetSettings: [
+        "ComposableArchitecture": .settings(base: [
+            "OTHER_SWIFT_FLAGS": ["-module-alias", "Sharing=SwiftSharing"]
+        ]),
+        "Sharing": .settings(base: [
+            "PRODUCT_NAME": "SwiftSharing",
+            "OTHER_SWIFT_FLAGS": ["-module-alias", "Sharing=SwiftSharing"]
+        ])
+    ]
+)
+#endif
+```
+
+<Note>
+With this configuration, import `SwiftSharing` instead of `Sharing`.
+</Note>
+
+### Transitive Static Dependencies
+
+When a dynamic framework depends on static ones, use `internal import` (Swift 6+):
+
+```swift
+internal import StaticModule
+```
+
+For older Swift versions, use `@_implementationOnly`:
+
+```swift
+@_implementationOnly import StaticModule
+```
+
+### Dependencies Not Resolving
+
+<Steps>
+
+### Step 1: Clean Dependencies
+
+```bash
+rm -rf Tuist/Dependencies
+```
+
+### Step 2: Reinstall
+
+```bash
+tuist install
+```
+
+### Step 3: Force Resolved Versions (CI)
+
+On CI, use pinned versions:
+
+```bash
+tuist install --force-resolved-versions
+```
+
+</Steps>
+
+## Best Practices
+
+### On CI: Force Resolved Versions
+
+Ensure deterministic builds:
+
+```bash CI Script
+tuist install --force-resolved-versions
+tuist generate
+xcodebuild build -workspace App.xcworkspace -scheme App
+```
+
+### Keep Dependencies Updated
+
+Regularly update and test:
+
+```bash
+# Update Package.resolved
+tuist install
+
+# Review changes
+git diff Tuist/Package.resolved
+
+# Test with updated dependencies
+tuist test
+```
+
+### Version Pinning Strategy
+
+```swift Tuist/Package.swift
+let package = Package(
+    name: "MyApp",
+    dependencies: [
+        // Exact version for critical dependencies
+        .package(url: "https://github.com/realm/realm-swift", exact: "10.45.0"),
+        
+        // Up to next major for stable packages
+        .package(url: "https://github.com/Alamofire/Alamofire", .upToNextMajor(from: "5.8.0")),
+        
+        // Branch for internal packages
+        .package(url: "https://github.com/myorg/shared-kit", branch: "main")
+    ]
+)
+```
+
+### Document Special Configurations
+
+Create a `DEPENDENCIES.md` file:
+
+```markdown DEPENDENCIES.md
+# Dependencies
+
+## Special Configurations
+
+### Firebase
+- Requires `-ObjC` linker flag
+- `FBLPromises` must be dynamic framework
+- See: Tuist/Package.swift
+
+### The Composable Architecture
+- All packages linked dynamically
+- Import `SwiftSharing` instead of `Sharing`
+- See: Tuist/Package.swift
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Optimize Builds" icon="bolt" href="/guides/build-optimization">
+  Enable binary caching for faster builds
+</Card>
+
+<Card title="Project Structure" icon="sitemap" href="/guides/project-structure">
+  Learn how to organize your dependency graph
+</Card>
+
+<Card title="Set Up CI/CD" icon="rotate" href="/guides/ci-cd">
+  Configure CI for dependency management
+</Card>
+
+<Card title="Migrate from Xcode" icon="arrow-right-arrow-left" href="/guides/migrate-from-xcode">
+  Migrate existing dependencies to Tuist
+</Card>
+
+</CardGroup>

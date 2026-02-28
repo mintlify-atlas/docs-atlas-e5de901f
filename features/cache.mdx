@@ -1,0 +1,239 @@
+---
+title: Binary Caching
+description: Speed up your builds with intelligent binary caching
+---
+
+Tuist's binary caching feature dramatically reduces build times by caching framework and library binaries, allowing you to reuse previously built artifacts instead of recompiling everything from scratch.
+
+## Overview
+
+Binary caching works by:
+- **Computing content hashes** for your targets based on source files, dependencies, and build configuration
+- **Storing compiled binaries** in local or remote storage
+- **Replacing targets** with their cached binaries when the content hasn't changed
+- **Warming the cache** in CI to speed up local development
+
+<Info>
+  Tuist intelligently determines which targets are cacheable. Only frameworks, static frameworks, bundles, and macros are eligible for caching.
+</Info>
+
+## How It Works
+
+### Content Hashing
+
+Tuist generates a unique hash for each target based on:
+
+1. **Source files** - All Swift, Objective-C, and resource files
+2. **Dependencies** - Both direct and transitive dependencies
+3. **Build settings** - Configuration, Swift version, and compiler flags
+4. **Cache version** - Tuist's cache version to invalidate incompatible artifacts
+
+```swift
+// Automatically excluded from cache:
+// - Targets that depend on XCTest
+// - Excluded targets you specify
+// - Non-cacheable product types (apps, tests)
+```
+
+### Cache Storage
+
+Tuist supports two storage options:
+
+<CardGroup cols={2}>
+  <Card title="Local Cache" icon="laptop">
+    Fast, disk-based cache stored on your machine. Perfect for individual developers.
+  </Card>
+  <Card title="Remote Cache" icon="cloud">
+    Shared cache stored in Tuist Cloud. Enables team-wide cache sharing and CI/CD acceleration.
+  </Card>
+</CardGroup>
+
+## Getting Started
+
+### Enable Binary Cache
+
+By default, binary caching is enabled for all Tuist projects. To use it:
+
+<Steps>
+  <Step title="Generate with cache">
+    Run your project with caching enabled:
+    ```bash
+    tuist generate
+    ```
+    
+    The first generation will build everything and populate the cache.
+  </Step>
+  
+  <Step title="Build your project">
+    Build your project in Xcode. Tuist will cache the compiled frameworks.
+  </Step>
+  
+  <Step title="Clean and regenerate">
+    ```bash
+    tuist clean
+    tuist generate
+    ```
+    
+    Watch as Tuist restores cached binaries instead of recompiling!
+  </Step>
+</Steps>
+
+### Warm the Cache in CI
+
+Speed up CI builds by pre-building and caching frameworks:
+
+```bash
+# In your CI script
+tuist cache warm
+```
+
+This builds all cacheable targets and stores them for future runs.
+
+## Remote Caching
+
+Share cache artifacts across your team using Tuist Cloud.
+
+### Setup
+
+<Steps>
+  <Step title="Authenticate">
+    ```bash
+    tuist auth
+    ```
+  </Step>
+  
+  <Step title="Link your project">
+    ```bash
+    tuist project create
+    ```
+  </Step>
+  
+  <Step title="Use remote cache">
+    Tuist automatically uses remote cache when authenticated. No additional configuration needed!
+  </Step>
+</Steps>
+
+<Tip>
+  Remote cache is transparent. Tuist checks the remote cache first, falls back to local cache, and finally rebuilds if necessary.
+</Tip>
+
+## Configuration
+
+### Exclude Targets from Cache
+
+Some targets shouldn't be cached (e.g., frequently changing code):
+
+```bash
+tuist generate --no-cache
+```
+
+Or exclude specific targets when warming the cache:
+
+```bash
+tuist cache warm --exclude TargetName
+```
+
+### Disable Binary Cache
+
+If you need to build everything from source:
+
+```bash
+tuist build --no-binary-cache
+tuist test --no-binary-cache
+```
+
+## Cache Invalidation
+
+The cache is automatically invalidated when:
+
+- **Source files change** - Any modification to Swift, Objective-C, or resource files
+- **Dependencies change** - Updates to SPM packages, CocoaPods, or local dependencies
+- **Build settings change** - Configuration, compiler flags, or Swift version updates
+- **Cache version bumps** - Tuist updates that change the cache format
+
+<Warning>
+  Clean builds ignore the cache. Use `tuist clean` to force rebuilding all targets.
+</Warning>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Structure your project for caching" icon="sitemap">
+    - Break your app into multiple frameworks
+    - Separate stable code from frequently changing code
+    - Use explicit dependencies instead of implicit ones
+    - Keep framework interfaces stable
+  </Accordion>
+  
+  <Accordion title="Optimize CI builds" icon="rocket">
+    - Run `tuist cache warm` as the first step in CI
+    - Cache the `~/.tuist/Cache` directory between CI runs
+    - Use remote cache to share artifacts across CI jobs
+  </Accordion>
+  
+  <Accordion title="Debug cache issues" icon="bug">
+    Check if a target is being cached:
+    ```bash
+    tuist cache
+    ```
+    
+    Clear local cache:
+    ```bash
+    rm -rf ~/.tuist/Cache
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Performance Impact
+
+<CardGroup cols={3}>
+  <Card title="First Build" icon="clock">
+    Standard build time
+    
+    No cache available
+  </Card>
+  <Card title="Cached Build" icon="bolt">
+    **70-90% faster**
+    
+    Only changed targets rebuild
+  </Card>
+  <Card title="Full Cache" icon="rocket">
+    **95%+ faster**
+    
+    No compilation needed
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Cache not being used" icon="circle-question">
+    - Verify `tuist generate` completed successfully
+    - Check if targets are cacheable (frameworks, not apps)
+    - Ensure you're not using `--no-cache` flag
+    - Verify remote authentication with `tuist auth`
+  </Accordion>
+  
+  <Accordion title="Outdated cache artifacts" icon="clock-rotate-left">
+    - Run `tuist clean` to clear local cache
+    - Verify source files are properly tracked in git
+    - Check for uncommitted changes that affect hashing
+  </Accordion>
+  
+  <Accordion title="Remote cache upload failures" icon="cloud-xmark">
+    - Verify network connectivity
+    - Check authentication status
+    - Ensure project is properly linked to Tuist Cloud
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Selective Testing" icon="flask" href="/features/selective-testing">
+    Only run tests affected by your changes
+  </Card>
+  <Card title="Build Insights" icon="chart-line" href="/features/insights">
+    Analyze build performance and cache efficiency
+  </Card>
+</CardGroup>

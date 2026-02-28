@@ -1,0 +1,721 @@
+---
+title: "Manifests"
+description: "Understanding Project.swift, Workspace.swift, and Config.swift manifest files"
+icon: "file-code"
+---
+
+Tuist uses Swift-based manifest files to describe your projects, workspaces, and configuration. This guide explains each manifest type and how to use them effectively.
+
+## Manifest Types
+
+Tuist supports three main manifest files:
+
+<CardGroup cols={3}>
+  <Card title="Project.swift" icon="cube">
+    Defines a single Xcode project with targets, schemes, and settings
+  </Card>
+  
+  <Card title="Workspace.swift" icon="folder-tree">
+    Groups multiple projects into an Xcode workspace
+  </Card>
+  
+  <Card title="Tuist.swift" icon="gear">
+    Global configuration and shared settings (formerly Config.swift)
+  </Card>
+</CardGroup>
+
+## Project.swift
+
+The `Project.swift` manifest defines an Xcode project and its targets.
+
+### Basic Structure
+
+<CodeGroup>
+```swift Minimal Example
+import ProjectDescription
+
+let project = Project(
+    name: "MyApp",
+    targets: [
+        .target(
+            name: "MyApp",
+            destinations: .iOS,
+            product: .app,
+            bundleId: "com.example.myapp",
+            sources: ["Sources/**"],
+            resources: ["Resources/**"]
+        )
+    ]
+)
+```
+
+```swift Complete Example
+import ProjectDescription
+
+let project = Project(
+    name: "MyApp",
+    organizationName: "My Company",
+    options: .options(
+        automaticSchemesOptions: .disabled,
+        textSettings: .textSettings(
+            usesTabs: false,
+            indentWidth: 4,
+            tabWidth: 4
+        )
+    ),
+    packages: [
+        .remote(
+            url: "https://github.com/Alamofire/Alamofire",
+            requirement: .upToNextMajor(from: "5.8.0")
+        )
+    ],
+    settings: .settings(
+        configurations: [
+            .debug(name: "Debug"),
+            .release(name: "Release")
+        ]
+    ),
+    targets: [
+        .target(
+            name: "MyApp",
+            destinations: [.iPhone, .iPad],
+            product: .app,
+            bundleId: "com.example.myapp",
+            deploymentTargets: .iOS("15.0"),
+            infoPlist: .extendingDefault(with: [
+                "UILaunchScreen": [:],
+                "CFBundleDisplayName": "My App"
+            ]),
+            sources: ["MyApp/Sources/**"],
+            resources: ["MyApp/Resources/**"],
+            scripts: [
+                .pre(
+                    script: "swiftlint",
+                    name: "SwiftLint"
+                )
+            ],
+            dependencies: [
+                .target(name: "MyAppKit"),
+                .external(name: "Alamofire")
+            ],
+            settings: .settings(
+                base: [
+                    "DEVELOPMENT_TEAM": "ABCDEF1234"
+                ]
+            )
+        ),
+        .target(
+            name: "MyAppKit",
+            destinations: .iOS,
+            product: .framework,
+            bundleId: "com.example.myapp.kit",
+            sources: ["MyAppKit/Sources/**"]
+        ),
+        .target(
+            name: "MyAppTests",
+            destinations: .iOS,
+            product: .unitTests,
+            bundleId: "com.example.myapp.tests",
+            sources: ["MyApp/Tests/**"],
+            dependencies: [
+                .target(name: "MyApp")
+            ]
+        )
+    ],
+    schemes: [
+        .scheme(
+            name: "MyApp-Dev",
+            shared: true,
+            buildAction: .buildAction(targets: ["MyApp"]),
+            testAction: .targets(["MyAppTests"]),
+            runAction: .runAction(
+                executable: "MyApp",
+                arguments: .arguments(
+                    environmentVariables: [
+                        "API_URL": "https://dev.api.example.com"
+                    ]
+                )
+            )
+        )
+    ],
+    additionalFiles: [
+        "README.md",
+        ".swiftlint.yml"
+    ]
+)
+```
+</CodeGroup>
+
+### Key Components
+
+<Tabs>
+  <Tab title="Targets">
+    Targets define buildable components:
+    
+    ```swift
+    .target(
+        name: "FeatureProfile",
+        destinations: .iOS,
+        product: .framework,
+        bundleId: "com.example.profile",
+        deploymentTargets: .iOS("15.0"),
+        sources: ["Profile/Sources/**"],
+        resources: ["Profile/Resources/**"],
+        dependencies: [
+            .target(name: "Core"),
+            .external(name: "Kingfisher")
+        ]
+    )
+    ```
+    
+    **Product types:**
+    - `.app` - Application
+    - `.framework` - Dynamic framework
+    - `.staticFramework` - Static framework
+    - `.staticLibrary` - Static library
+    - `.unitTests` - Unit test bundle
+    - `.uiTests` - UI test bundle
+    - `.appExtension` - App extension
+    - `.watch2App` - watchOS app
+  </Tab>
+  
+  <Tab title="Dependencies">
+    Link targets and external packages:
+    
+    ```swift
+    dependencies: [
+        // Internal target
+        .target(name: "CoreKit"),
+        
+        // Another project
+        .project(
+            target: "Networking",
+            path: "../Networking"
+        ),
+        
+        // Swift Package
+        .external(name: "Alamofire"),
+        
+        // XCFramework
+        .xcframework(path: "Vendor/Analytics.xcframework"),
+        
+        // SDK framework
+        .sdk(name: "StoreKit", type: .framework)
+    ]
+    ```
+  </Tab>
+  
+  <Tab title="Sources & Resources">
+    Define source files and resources:
+    
+    ```swift
+    // Glob patterns for sources
+    sources: [
+        "Sources/**/*.swift",
+        "Sources/**/*.m",
+        "Sources/**/*.h"
+    ]
+    
+    // Resources with specific handling
+    resources: [
+        // Standard resources
+        "Resources/**",
+        
+        // Folder references (blue folders)
+        .folderReference(path: "Assets"),
+        
+        // Privacy manifest
+        .process("PrivacyInfo.xcprivacy"),
+        
+        // Copy without processing
+        .copy("data.json")
+    ]
+    ```
+    
+    <Note>
+      Tuist automatically excludes test files and supports `.lproj` for localization
+    </Note>
+  </Tab>
+  
+  <Tab title="Build Settings">
+    Configure build settings at project or target level:
+    
+    ```swift
+    settings: .settings(
+        base: [
+            "SWIFT_VERSION": "5.9",
+            "IPHONEOS_DEPLOYMENT_TARGET": "15.0"
+        ],
+        configurations: [
+            .debug(
+                name: "Debug",
+                settings: [
+                    "ENABLE_TESTABILITY": "YES",
+                    "SWIFT_OPTIMIZATION_LEVEL": "-Onone"
+                ]
+            ),
+            .release(
+                name: "Release",
+                settings: [
+                    "SWIFT_OPTIMIZATION_LEVEL": "-O"
+                ]
+            )
+        ]
+    )
+    ```
+  </Tab>
+  
+  <Tab title="Schemes">
+    Custom build, test, and run configurations:
+    
+    ```swift
+    .scheme(
+        name: "MyApp-Staging",
+        shared: true,
+        buildAction: .buildAction(
+            targets: ["MyApp", "MyAppKit"],
+            preActions: [
+                .executionAction(
+                    scriptText: "echo 'Starting build...'",
+                    target: "MyApp"
+                )
+            ]
+        ),
+        testAction: .targets(
+            ["MyAppTests"],
+            options: .options(
+                coverage: true,
+                language: "en"
+            )
+        ),
+        runAction: .runAction(
+            executable: "MyApp",
+            arguments: .arguments(
+                environmentVariables: [
+                    "API_URL": .environmentVariable(
+                        value: "https://staging.api.example.com",
+                        isEnabled: true
+                    )
+                ],
+                launchArguments: [
+                    .launchArgument(name: "-debug", isEnabled: true)
+                ]
+            )
+        ),
+        profileAction: .profileAction(executable: "MyApp"),
+        analyzeAction: .analyzeAction(configuration: "Debug"),
+        archiveAction: .archiveAction(configuration: "Release")
+    )
+    ```
+  </Tab>
+</Tabs>
+
+### Advanced Features
+
+<AccordionGroup>
+  <Accordion title="Target Scripts" icon="terminal">
+    Add custom build phases:
+    
+    ```swift
+    scripts: [
+        // Pre-build script
+        .pre(
+            script: """
+            if which swiftlint >/dev/null; then
+                swiftlint
+            else
+                echo "warning: SwiftLint not installed"
+            fi
+            """,
+            name: "SwiftLint",
+            basedOnDependencyAnalysis: false
+        ),
+        
+        // Post-build script
+        .post(
+            path: "Scripts/upload-symbols.sh",
+            name: "Upload Debug Symbols",
+            inputPaths: ["$DWARF_DSYM_FOLDER_PATH"],
+            outputPaths: []
+        )
+    ]
+    ```
+  </Accordion>
+  
+  <Accordion title="Foreign Builds" icon="globe">
+    Wrap non-Xcode build systems (KMP, Rust, etc.):
+    
+    ```swift
+    .foreignBuild(
+        name: "SharedKMP",
+        destinations: .iOS,
+        script: """
+        eval "$($HOME/.local/bin/mise activate bash --shims)"
+        cd $SRCROOT/SharedKMP
+        gradle assembleSharedKMPReleaseXCFramework
+        """,
+        inputs: [
+            .folder("SharedKMP/src"),
+            .file("SharedKMP/build.gradle.kts")
+        ],
+        output: .xcframework(
+            path: "SharedKMP/build/XCFrameworks/release/SharedKMP.xcframework",
+            linking: .dynamic
+        )
+    )
+    ```
+  </Accordion>
+  
+  <Accordion title="Resource Synthesizers" icon="wand-magic-sparkles">
+    Generate code for resources:
+    
+    ```swift
+    resourceSynthesizers: [
+        .strings(),
+        .assets(),
+        .fonts(),
+        .plists(),
+        .custom(
+            name: "JSONAssets",
+            parser: .json,
+            extensions: ["json"]
+        )
+    ]
+    ```
+    
+    Access generated code:
+    ```swift
+    // Strings
+    let title = MyAppStrings.profileTitle
+    
+    // Assets
+    let icon = MyAppAssets.profileIcon.image
+    
+    // Fonts
+    let font = MyAppFonts.custom(name: "CustomFont", size: 14)
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Workspace.swift
+
+The `Workspace.swift` manifest groups multiple projects into an Xcode workspace.
+
+<CodeGroup>
+```swift Basic Workspace
+import ProjectDescription
+
+let workspace = Workspace(
+    name: "MyWorkspace",
+    projects: [
+        "App",
+        "Framework",
+        "Packages/**"
+    ]
+)
+```
+
+```swift Advanced Workspace
+import ProjectDescription
+
+let workspace = Workspace(
+    name: "MyWorkspace",
+    projects: [
+        "App",
+        "Features/**",
+        "Core"
+    ],
+    schemes: [
+        .scheme(
+            name: "AllTargets",
+            shared: true,
+            buildAction: .buildAction(
+                targets: [
+                    .project(path: "App", target: "App"),
+                    .project(path: "Core", target: "Core")
+                ]
+            )
+        )
+    ],
+    fileHeaderTemplate: .file("Templates/FileHeader.txt"),
+    additionalFiles: [
+        "README.md",
+        "Documentation/**"
+    ],
+    generationOptions: .options(
+        autogeneratedWorkspaceSchemes: .disabled
+    )
+)
+```
+</CodeGroup>
+
+<Accordion title="When to Use Workspaces" icon="folder-tree">
+  Use `Workspace.swift` when you need to:
+  
+  - Group multiple independent projects
+  - Share schemes across projects
+  - Organize a large codebase into modules
+  - Include documentation or non-project files
+  
+  <Note>
+    If you only have one `Project.swift`, Tuist automatically generates a workspace - you don't need `Workspace.swift`
+  </Note>
+</Accordion>
+
+## Tuist.swift (Config)
+
+The `Tuist.swift` manifest (formerly `Config.swift`) provides global configuration that applies to all projects in your workspace.
+
+<CodeGroup>
+```swift Basic Config
+import ProjectDescription
+
+let tuist = Tuist(
+    project: .tuist(
+        generationOptions: .options(
+            enableCaching: true
+        )
+    )
+)
+```
+
+```swift Complete Config
+import ProjectDescription
+
+let tuist = Tuist(
+    fullHandle: "myorg/myproject",
+    inspectOptions: .options(
+        cacheOutputType: .json
+    ),
+    cache: .cache(
+        upload: true
+    ),
+    url: "https://tuist.dev",
+    project: .tuist(
+        compatibleXcodeVersions: .list(["15.0", "15.1"]),
+        swiftVersion: .init("5.9"),
+        plugins: [
+            .git(url: "https://github.com/myorg/tuist-plugin", tag: "1.0.0")
+        ],
+        generationOptions: .options(
+            enableCaching: true,
+            optionalAuthentication: false,
+            disableSandbox: false,
+            xcodeProjectName: "MyProject",
+            additionalPackageResolutionArguments: [
+                "--replace-scm-with-registry"
+            ]
+        ),
+        installOptions: .options(
+            passthroughSwiftPackageManagerArguments: [
+                "--verbose"
+            ]
+        )
+    )
+)
+```
+</CodeGroup>
+
+### Configuration Options
+
+<Tabs>
+  <Tab title="Generation">
+    Control how projects are generated:
+    
+    ```swift
+    generationOptions: .options(
+        // Enable Tuist Cloud caching
+        enableCaching: true,
+        
+        // Custom Xcode project name
+        xcodeProjectName: "MyApp",
+        
+        // Allow manifest execution without auth
+        optionalAuthentication: true,
+        
+        // Disable sandboxing (dev only)
+        disableSandbox: false,
+        
+        // Additional SPM arguments
+        additionalPackageResolutionArguments: [
+            "--replace-scm-with-registry"
+        ]
+    )
+    ```
+  </Tab>
+  
+  <Tab title="Cache">
+    Configure binary caching:
+    
+    ```swift
+    cache: .cache(
+        // Enable cache uploads (disable for CI read-only)
+        upload: true
+    )
+    ```
+  </Tab>
+  
+  <Tab title="Plugins">
+    Extend Tuist with plugins:
+    
+    ```swift
+    plugins: [
+        // Git-based plugin
+        .git(
+            url: "https://github.com/tuist/tuist-plugin-swiftlint",
+            tag: "1.0.0"
+        ),
+        
+        // Local plugin
+        .local(path: "../MyTuistPlugin")
+    ]
+    ```
+  </Tab>
+  
+  <Tab title="Compatibility">
+    Enforce Xcode and Swift versions:
+    
+    ```swift
+    compatibleXcodeVersions: .list([
+        "15.0",
+        "15.1",
+        "15.2"
+    ]),
+    
+    swiftVersion: .init("5.9")
+    ```
+    
+    Or use ranges:
+    ```swift
+    compatibleXcodeVersions: .range(
+        from: "15.0",
+        to: "16.0"
+    )
+    ```
+  </Tab>
+</Tabs>
+
+## Project Helpers
+
+Create reusable manifest helpers in `Tuist/ProjectDescriptionHelpers/`:
+
+<CodeGroup>
+```swift Tuist/ProjectDescriptionHelpers/Target+Templates.swift
+import ProjectDescription
+
+public extension Target {
+    static func feature(
+        name: String,
+        dependencies: [TargetDependency] = []
+    ) -> Target {
+        return .target(
+            name: name,
+            destinations: .iOS,
+            product: .framework,
+            bundleId: "com.example.\(name.lowercased())",
+            deploymentTargets: .iOS("15.0"),
+            sources: ["\(name)/Sources/**"],
+            resources: ["\(name)/Resources/**"],
+            dependencies: dependencies + [.target(name: "Core")]
+        )
+    }
+    
+    static func featureTests(for feature: String) -> Target {
+        return .target(
+            name: "\(feature)Tests",
+            destinations: .iOS,
+            product: .unitTests,
+            bundleId: "com.example.\(feature.lowercased()).tests",
+            sources: ["\(feature)/Tests/**"],
+            dependencies: [
+                .target(name: feature)
+            ]
+        )
+    }
+}
+```
+
+```swift Using Helpers
+import ProjectDescription
+import ProjectDescriptionHelpers
+
+let project = Project(
+    name: "MyApp",
+    targets: [
+        .feature(name: "Profile"),
+        .featureTests(for: "Profile"),
+        
+        .feature(name: "Settings"),
+        .featureTests(for: "Settings")
+    ]
+)
+```
+</CodeGroup>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="One Project Per Module" icon="cube">
+    Split large apps into focused projects:
+    
+    ```bash
+    /MyApp
+    ├── App/Project.swift           # Main app
+    ├── Features/
+    │   ├── Profile/Project.swift   # Profile feature
+    │   └── Settings/Project.swift  # Settings feature
+    └── Core/Project.swift          # Shared utilities
+    ```
+  </Accordion>
+  
+  <Accordion title="Use Type-Safe Helpers" icon="shield-check">
+    Leverage Swift's type system:
+    
+    ```swift
+    enum BundleIdentifiers {
+        static let app = "com.example.app"
+        static let framework = "com.example.framework"
+    }
+    
+    .target(
+        bundleId: BundleIdentifiers.app
+    )
+    ```
+  </Accordion>
+  
+  <Accordion title="Environment Variables" icon="key">
+    Use environment variables for sensitive data:
+    
+    ```swift
+    settings: .settings(
+        base: [
+            "DEVELOPMENT_TEAM": Environment.developmentTeam.getString(default: "")
+        ]
+    )
+    ```
+    
+    ```bash .env
+    TUIST_DEVELOPMENT_TEAM=ABCDEF1234
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Generated Projects" icon="wand-magic-sparkles" href="/concepts/generated-projects">
+    Learn how manifests become Xcode projects
+  </Card>
+  
+  <Card title="Workspaces" icon="folder-tree" href="/concepts/workspaces">
+    Organize multi-project workspaces
+  </Card>
+  
+  <Card title="Architecture" icon="diagram-project" href="/concepts/architecture">
+    Understand Tuist's architecture
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="/api-reference/introduction">
+    Complete manifest API documentation
+  </Card>
+</CardGroup>

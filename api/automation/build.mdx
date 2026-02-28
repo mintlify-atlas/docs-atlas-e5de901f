@@ -1,0 +1,336 @@
+---
+title: Build Automation
+titleTemplate: :title | API Reference | Tuist Documentation
+description: API reference for build automation with Tuist's ProjectAutomation framework
+---
+
+# Build Automation
+
+Automating builds using the ProjectAutomation framework.
+
+## Overview
+
+The ProjectAutomation framework allows you to programmatically access project structure and automate build processes. This is useful for creating custom CI/CD pipelines, build scripts, and development tools.
+
+## Loading the Project Graph
+
+The foundation of build automation is loading the project graph:
+
+```swift
+import ProjectAutomation
+
+// Load the graph at the current directory
+let graph = try Tuist.graph()
+
+// Or load at a specific path
+let graph = try Tuist.graph(at: "/path/to/project")
+```
+
+## Tuist.graph() Method
+
+<ParamField path="at" type="String?" default="nil">
+  The path at which the graph should be loaded. If `nil`, the current directory is used.
+</ParamField>
+
+<ResponseField name="Graph" type="Graph">
+  Returns the loaded graph containing all projects, targets, and schemes.
+</ResponseField>
+
+## Graph Structure
+
+The returned `Graph` object contains:
+
+<ResponseField name="name" type="String">
+  The name of the workspace or project.
+</ResponseField>
+
+<ResponseField name="path" type="String">
+  The absolute path to the workspace or project.
+</ResponseField>
+
+<ResponseField name="projects" type="[Project]">
+  An array of all projects in the graph.
+</ResponseField>
+
+## Project Structure
+
+Each `Project` in the graph has:
+
+<ResponseField name="name" type="String">
+  The name of the project.
+</ResponseField>
+
+<ResponseField name="path" type="String">
+  The absolute path of the project.
+</ResponseField>
+
+<ResponseField name="isExternal" type="Bool">
+  Indicates whether the project is imported through `Package.swift`.
+</ResponseField>
+
+<ResponseField name="packages" type="[Package]">
+  The Swift packages that this project depends on.
+</ResponseField>
+
+<ResponseField name="targets" type="[Target]">
+  The targets this project produces.
+</ResponseField>
+
+<ResponseField name="schemes" type="[Scheme]">
+  The schemes available to this project.
+</ResponseField>
+
+## Target Structure
+
+Each `Target` contains:
+
+<ResponseField name="name" type="String">
+  The name of the target.
+</ResponseField>
+
+<ResponseField name="product" type="String">
+  The product type the target produces (e.g., "app", "framework", "unit_tests").
+</ResponseField>
+
+<ResponseField name="bundleId" type="String">
+  The bundle identifier of the target.
+</ResponseField>
+
+<ResponseField name="sources" type="[String]">
+  List of file paths that are the target's sources.
+</ResponseField>
+
+<ResponseField name="resources" type="[String]">
+  List of file paths that are the target's resources.
+</ResponseField>
+
+<ResponseField name="settings" type="Settings">
+  The target's build settings.
+</ResponseField>
+
+<ResponseField name="dependencies" type="[TargetDependency]">
+  The target's dependencies.
+</ResponseField>
+
+## Example: Building All Apps
+
+```swift
+import Foundation
+import ProjectAutomation
+
+@main
+struct BuildAllApps {
+    static func main() throws {
+        let graph = try Tuist.graph()
+        
+        print("Loading project graph from: \(graph.path)")
+        print("Workspace: \(graph.name)\n")
+        
+        // Find all app targets
+        var appTargets: [(project: String, target: Target)] = []
+        for project in graph.projects {
+            for target in project.targets where target.product == "app" {
+                appTargets.append((project.name, target))
+            }
+        }
+        
+        print("Found \(appTargets.count) app targets:\n")
+        
+        // Build each app
+        for (projectName, target) in appTargets {
+            print("Building \(target.name) in \(projectName)...")
+            try buildApp(target: target.name, scheme: target.name)
+            print("✓ \(target.name) built successfully\n")
+        }
+    }
+    
+    static func buildApp(target: String, scheme: String) throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcodebuild")
+        process.arguments = [
+            "build",
+            "-scheme", scheme,
+            "-destination", "generic/platform=iOS",
+            "-configuration", "Release"
+        ]
+        
+        try process.run()
+        process.waitUntilExit()
+        
+        guard process.terminationStatus == 0 else {
+            throw BuildError.buildFailed(scheme: scheme)
+        }
+    }
+    
+    enum BuildError: Error {
+        case buildFailed(scheme: String)
+    }
+}
+```
+
+## Example: Conditional Building
+
+Build only specific targets based on criteria:
+
+```swift
+import Foundation
+import ProjectAutomation
+
+@main
+struct ConditionalBuild {
+    static func main() throws {
+        let graph = try Tuist.graph()
+        let targetsToBuild = ProcessInfo.processInfo.environment["TARGETS"]?.split(separator: ",").map(String.init) ?? []
+        
+        for project in graph.projects {
+            for target in project.targets {
+                // Build if specified in environment or if it's an app
+                let shouldBuild = targetsToBuild.contains(target.name) || target.product == "app"
+                
+                if shouldBuild {
+                    print("Building \(target.name) (\(target.product))...")
+                    try buildTarget(target, in: project)
+                }
+            }
+        }
+    }
+    
+    static func buildTarget(_ target: Target, in project: Project) throws {
+        // Build implementation
+        print("  Bundle ID: \(target.bundleId)")
+        print("  Sources: \(target.sources.count) files")
+        print("  Dependencies: \(target.dependencies.count)")
+    }
+}
+```
+
+## Example: Build Order Analysis
+
+Analyze and determine build order based on dependencies:
+
+```swift
+import Foundation
+import ProjectAutomation
+
+@main
+struct BuildOrderAnalyzer {
+    static func main() throws {
+        let graph = try Tuist.graph()
+        
+        // Collect all targets
+        var allTargets: [String: Target] = [:]
+        for project in graph.projects {
+            for target in project.targets {
+                allTargets[target.name] = target
+            }
+        }
+        
+        // Analyze dependencies
+        print("Build Order Analysis:\n")
+        for (name, target) in allTargets.sorted(by: { $0.key < $1.key }) {
+            print("\(name):")
+            print("  Product: \(target.product)")
+            print("  Dependencies: \(target.dependencies.count)")
+            
+            // List direct dependencies
+            for dependency in target.dependencies {
+                switch dependency {
+                case .target(let depName):
+                    print("    -> \(depName)")
+                case .external(let depName):
+                    print("    -> [external] \(depName)")
+                default:
+                    print("    -> [other]")
+                }
+            }
+            print()
+        }
+    }
+}
+```
+
+## Example: CI/CD Integration
+
+Integrate with CI/CD systems:
+
+```swift
+import Foundation
+import ProjectAutomation
+
+@main
+struct CIBuild {
+    static func main() throws {
+        let graph = try Tuist.graph()
+        let configuration = ProcessInfo.processInfo.environment["CONFIGURATION"] ?? "Debug"
+        let platform = ProcessInfo.processInfo.environment["PLATFORM"] ?? "iOS"
+        
+        print("CI Build Configuration:")
+        print("  Configuration: \(configuration)")
+        print("  Platform: \(platform)\n")
+        
+        // Build all non-test targets
+        for project in graph.projects {
+            for target in project.targets {
+                guard !target.product.contains("test") else { continue }
+                
+                print("Building \(target.name)...")
+                
+                // Extract build settings
+                let settings = target.settings
+                print("  Base settings: \(settings.base.count) keys")
+                print("  Configurations: \(settings.configurations.count)")
+                
+                // Perform build
+                try executeBuild(
+                    target: target.name,
+                    configuration: configuration,
+                    platform: platform
+                )
+            }
+        }
+    }
+    
+    static func executeBuild(target: String, configuration: String, platform: String) throws {
+        // Execute xcodebuild or tuist build
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = [
+            "tuist", "build",
+            target,
+            "--configuration", configuration,
+            "--platform", platform
+        ]
+        
+        try process.run()
+        process.waitUntilExit()
+        
+        if process.terminationStatus == 0 {
+            print("  ✓ Success\n")
+        } else {
+            throw BuildError.failed(target: target)
+        }
+    }
+    
+    enum BuildError: Error {
+        case failed(target: String)
+    }
+}
+```
+
+## Best Practices
+
+1. **Error Handling**: Always handle potential errors when loading the graph or building targets.
+
+2. **Parallel Builds**: Consider building independent targets in parallel for faster execution.
+
+3. **Configuration**: Use environment variables for configuration options (build configuration, platform, etc.).
+
+4. **Logging**: Provide clear logging for build progress and results.
+
+5. **Validation**: Validate the graph structure before attempting builds.
+
+## Related APIs
+
+- [ProjectAutomation Overview](/api/automation/overview) - Framework overview
+- [Test Automation](/api/automation/test) - Test automation
+- [Project API](/api/project) - Project manifest definition

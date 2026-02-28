@@ -1,0 +1,242 @@
+---
+title: ProjectAutomation Overview
+titleTemplate: :title | API Reference | Tuist Documentation
+description: Overview of Tuist's ProjectAutomation framework for automating builds and tests
+---
+
+# ProjectAutomation Overview
+
+The ProjectAutomation framework provides a stable, serialized API for automation tooling to interact with Tuist projects.
+
+## Overview
+
+ProjectAutomation is a separate framework from ProjectDescription that provides the **output schema** of generated Xcode projects. While ProjectDescription defines the input manifest DSL used in `Project.swift` files, ProjectAutomation defines the structure of the generated project graph that automation tools can consume.
+
+## Key Concepts
+
+### Input vs Output
+
+- **ProjectDescription** (Input) - The manifest DSL you write in `Project.swift`
+- **ProjectAutomation** (Output) - The serialized graph representing the generated Xcode project
+
+### Use Cases
+
+ProjectAutomation is designed for:
+
+- Build automation scripts
+- Custom CI/CD tooling
+- Project analysis tools
+- Testing infrastructure
+- Code generation based on project structure
+
+## Loading the Project Graph
+
+The main entry point is the `Tuist.graph()` method:
+
+```swift
+import ProjectAutomation
+
+// Load graph at current directory
+let graph = try Tuist.graph()
+
+// Load graph at specific path
+let graph = try Tuist.graph(at: "/path/to/project")
+
+// Access projects
+for project in graph.projects {
+    print("Project: \(project.name)")
+    print("Path: \(project.path)")
+    
+    // Access targets
+    for target in project.targets {
+        print("  Target: \(target.name)")
+        print("  Product: \(target.product)")
+        print("  Bundle ID: \(target.bundleId)")
+    }
+}
+```
+
+## Core Types
+
+The ProjectAutomation framework provides these main types:
+
+### Graph
+
+The root object representing the entire project graph.
+
+```swift
+public struct Graph: Codable, Equatable, Sendable {
+    public let name: String
+    public let path: String
+    public let projects: [Project]
+}
+```
+
+### Project
+
+Represents a single Xcode project in the graph.
+
+```swift
+public struct Project: Codable, Equatable, Sendable {
+    public let name: String
+    public let path: String
+    public let isExternal: Bool
+    public let packages: [Package]
+    public let targets: [Target]
+    public let schemes: [Scheme]
+}
+```
+
+### Target
+
+Represents a build target within a project.
+
+```swift
+public struct Target: Codable, Equatable, Sendable {
+    public let name: String
+    public let product: String
+    public let bundleId: String
+    public let sources: [String]
+    public let resources: [String]
+    public let settings: Settings
+    public let dependencies: [TargetDependency]
+}
+```
+
+## Example: Build Automation
+
+Here's an example of using ProjectAutomation to build specific targets:
+
+```swift
+import Foundation
+import ProjectAutomation
+
+@main
+struct BuildAutomation {
+    static func main() throws {
+        let graph = try Tuist.graph()
+        
+        // Find all app targets
+        let appTargets = graph.projects.flatMap { project in
+            project.targets.filter { $0.product == "app" }
+        }
+        
+        print("Found \(appTargets.count) app targets:")
+        for target in appTargets {
+            print("  - \(target.name) (\(target.bundleId))")
+        }
+        
+        // Build each app target
+        for target in appTargets {
+            try buildTarget(target)
+        }
+    }
+    
+    static func buildTarget(_ target: Target) throws {
+        print("Building \(target.name)...")
+        // Implement build logic here
+    }
+}
+```
+
+## Example: Test Discovery
+
+Automate test target discovery and execution:
+
+```swift
+import Foundation
+import ProjectAutomation
+
+@main
+struct TestRunner {
+    static func main() throws {
+        let graph = try Tuist.graph()
+        
+        // Find all test targets
+        let testTargets = graph.projects.flatMap { project in
+            project.targets.filter { 
+                $0.product == "unit_tests" || $0.product == "ui_tests"
+            }
+        }
+        
+        print("Found \(testTargets.count) test targets")
+        
+        for target in testTargets {
+            print("\nRunning tests for: \(target.name)")
+            print("  Product: \(target.product)")
+            print("  Sources: \(target.sources.count) files")
+            
+            // Run tests
+            try runTests(for: target)
+        }
+    }
+    
+    static func runTests(for target: Target) throws {
+        // Implement test execution logic
+    }
+}
+```
+
+## Example: Dependency Analysis
+
+Analyze project dependencies:
+
+```swift
+import Foundation
+import ProjectAutomation
+
+@main
+struct DependencyAnalyzer {
+    static func main() throws {
+        let graph = try Tuist.graph()
+        
+        for project in graph.projects {
+            print("\nProject: \(project.name)")
+            
+            for target in project.targets {
+                print("  Target: \(target.name)")
+                print("    Dependencies: \(target.dependencies.count)")
+                
+                for dependency in target.dependencies {
+                    switch dependency {
+                    case .target(let name):
+                        print("      - Target: \(name)")
+                    case .external(let name):
+                        print("      - External: \(name)")
+                    case .sdk(let name, _):
+                        print("      - SDK: \(name)")
+                    default:
+                        print("      - Other dependency")
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+## Automation Tasks
+
+ProjectAutomation also provides a `Task` type for defining automation tasks:
+
+```swift
+import ProjectAutomation
+
+let task = Task(options: [.option("--verbose")]) { attributes in
+    print("Running automation task...")
+    print("Attributes: \(attributes)")
+    
+    let graph = try Tuist.graph()
+    // Perform automation work
+}
+```
+
+## API Reference
+
+- [Build API](/api/automation/build) - Build automation
+- [Test API](/api/automation/test) - Test automation
+
+## Related Documentation
+
+- [ProjectDescription API](/api/project) - The input manifest DSL
+- [Automation Guide](https://docs.tuist.dev/guides/automation) - Automation best practices

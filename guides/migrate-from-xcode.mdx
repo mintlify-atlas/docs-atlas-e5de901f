@@ -1,0 +1,359 @@
+---
+title: 'Migrate from Xcode Projects'
+description: 'Step-by-step guide to migrate your existing Xcode project to Tuist'
+icon: 'arrow-right-arrow-left'
+---
+
+## Overview
+
+Migrating an existing Xcode project to Tuist allows you to gain better control over your project structure, enable powerful features like binary caching, and simplify dependency management. This guide walks you through the migration process step by step.
+
+<Tip>
+Manual migration is an excellent opportunity to clean up accumulated complexity in your Xcode projects. Your team and Xcode will benefit from a simpler, more consistent project structure.
+</Tip>
+
+## Before You Begin
+
+### Prerequisites
+
+- Xcode installed on your Mac
+- Tuist CLI installed (`curl -Ls https://install.tuist.io | bash`)
+- Basic familiarity with your current project structure
+- Backup of your existing project (commit all changes to git)
+
+### Understanding the Benefits
+
+Migrating to Tuist provides:
+
+- **Consistency**: Projects are defined declaratively and remain simple over time
+- **Faster builds**: Enable binary caching and selective testing
+- **Better collaboration**: Fewer merge conflicts in project files
+- **Dependency management**: Unified approach to external dependencies
+- **Graph validation**: Automatic detection of dependency cycles and issues
+
+## Migration Process
+
+<Steps>
+
+### Step 1: Create Project Scaffold
+
+First, create the basic Tuist structure in your project root:
+
+<CodeGroup>
+
+```swift Tuist.swift
+import ProjectDescription
+
+let tuist = Tuist()
+```
+
+```swift Project.swift
+import ProjectDescription
+
+let project = Project(
+    name: "MyApp-Tuist",
+    targets: [
+        // Targets will go here
+    ]
+)
+```
+
+```swift Tuist/Package.swift
+// swift-tools-version: 5.9
+import PackageDescription
+
+#if TUIST
+    import ProjectDescription
+
+    let packageSettings = PackageSettings(
+        productTypes: [:]
+    )
+#endif
+
+let package = Package(
+    name: "MyApp",
+    dependencies: [
+        // Add your dependencies here
+    ]
+)
+```
+
+</CodeGroup>
+
+<Tip>
+Add the `-Tuist` suffix to your project name to prevent conflicts with the existing Xcode project. You can remove it after completing the migration.
+</Tip>
+
+### Step 2: Set Up CI Validation
+
+Extend your continuous integration pipeline to build and test the Tuist-generated project. This ensures each migration step is valid:
+
+```bash .github/workflows/tuist-validation.yml
+name: Tuist Validation
+
+on: [pull_request]
+
+jobs:
+  validate:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Tuist
+        run: curl -Ls https://install.tuist.io | bash
+      - name: Install dependencies
+        run: tuist install
+      - name: Generate project
+        run: tuist generate
+      - name: Build project
+        run: xcodebuild build -workspace MyApp-Tuist.xcworkspace -scheme MyApp-Tuist
+```
+
+### Step 3: Extract Build Settings to XCConfig Files
+
+Extract project-level build settings to make the project leaner:
+
+```bash
+mkdir -p xcconfigs/
+tuist migration settings-to-xcconfig -p MyApp.xcodeproj -x xcconfigs/MyApp-Project.xcconfig
+```
+
+Update your `Project.swift` to reference the xcconfig file:
+
+```swift Project.swift
+import ProjectDescription
+
+let project = Project(
+    name: "MyApp-Tuist",
+    settings: .settings(configurations: [
+        .debug(name: "Debug", xcconfig: "./xcconfigs/MyApp-Project.xcconfig"),
+        .release(name: "Release", xcconfig: "./xcconfigs/MyApp-Project.xcconfig"),
+    ]),
+    targets: [
+        // Targets will go here
+    ]
+)
+```
+
+Add a CI check to ensure build settings remain in xcconfig files:
+
+```bash
+tuist migration check-empty-settings -p MyApp-Tuist.xcodeproj
+```
+
+### Step 4: Extract Package Dependencies
+
+Move all Swift Package Manager dependencies to `Tuist/Package.swift`:
+
+```swift Tuist/Package.swift
+let package = Package(
+    name: "MyApp",
+    dependencies: [
+        .package(url: "https://github.com/Alamofire/Alamofire", from: "5.0.0"),
+        .package(url: "https://github.com/onevcat/Kingfisher", .upToNextMajor(from: "7.12.0")),
+    ]
+)
+```
+
+<Tip>
+Override the product type for specific packages using `productTypes` in `PackageSettings`. By default, Tuist treats all packages as static frameworks.
+</Tip>
+
+### Step 5: Determine Migration Order
+
+List targets sorted by their number of dependencies:
+
+```bash
+tuist migration list-targets -p MyApp.xcodeproj
+```
+
+Migrate from the top of the list (most depended upon) to the bottom. This ensures dependencies are available as you migrate dependent targets.
+
+### Step 6: Migrate Targets
+
+For each target:
+
+#### Extract Target Build Settings
+
+```bash
+tuist migration settings-to-xcconfig -p MyApp.xcodeproj -t TargetName -x xcconfigs/TargetName.xcconfig
+```
+
+#### Define the Target
+
+Add the target definition to `Project.swift`:
+
+```swift Project.swift
+.target(
+    name: "TargetName",
+    destinations: .iOS,
+    product: .framework,
+    bundleId: "com.example.targetname",
+    sources: ["Sources/TargetName/**"],
+    resources: ["Resources/TargetName/**"],
+    dependencies: [
+        .external(name: "Alamofire"),
+        .target(name: "OtherTarget")
+    ],
+    settings: .settings(configurations: [
+        .debug(name: "Debug", xcconfig: "./xcconfigs/TargetName.xcconfig"),
+        .release(name: "Release", xcconfig: "./xcconfigs/TargetName.xcconfig"),
+    ])
+)
+```
+
+#### Validate the Target
+
+After defining each target:
+
+```bash
+tuist generate
+xcodebuild build -workspace MyApp-Tuist.xcworkspace -scheme TargetName
+```
+
+<Tip>
+Use [xcdiff](https://github.com/bloomberg/xcdiff) to compare the generated project with the original to verify correctness.
+</Tip>
+
+#### Create Pull Request
+
+Create a separate PR for each target migration to facilitate code review and testing.
+
+### Step 7: Migrate Test Targets
+
+For each test target, follow the same process as regular targets:
+
+```swift Project.swift
+.target(
+    name: "TargetNameTests",
+    destinations: .iOS,
+    product: .unitTests,
+    bundleId: "com.example.targetname.tests",
+    sources: ["Tests/TargetNameTests/**"],
+    dependencies: [
+        .target(name: "TargetName"),
+        .xctest
+    ],
+    settings: .settings(configurations: [
+        .debug(name: "Debug", xcconfig: "./xcconfigs/TargetNameTests.xcconfig"),
+        .release(name: "Release", xcconfig: "./xcconfigs/TargetNameTests.xcconfig"),
+    ])
+)
+```
+
+Validate tests run correctly:
+
+```bash
+tuist test TargetNameTests
+```
+
+### Step 8: Complete the Migration
+
+Once all targets are migrated:
+
+1. Remove the `-Tuist` suffix from the project name
+2. Update CI/CD pipelines to use Tuist commands
+3. Delete the old `.xcodeproj` file
+4. Update team documentation
+
+</Steps>
+
+## Troubleshooting
+
+### Compilation Errors Due to Missing Files
+
+If files aren't contained in directories matching the target structure:
+
+<Warning>
+Ensure the list of files after generation matches the original Xcode project. Use this opportunity to align file structure with target structure.
+</Warning>
+
+Compare source lists:
+
+```bash
+# List files in original target
+xcodebuild -project MyApp.xcodeproj -target TargetName -showBuildSettings | grep SOURCES
+
+# List files in generated project
+tuist generate
+xcodebuild -project MyApp-Tuist.xcodeproj -target TargetName -showBuildSettings | grep SOURCES
+```
+
+### Build Settings Conflicts
+
+If you encounter conflicts between project and target settings:
+
+1. Review the extracted `.xcconfig` files
+2. Ensure inheritance is correct using `$(inherited)`
+3. Remove duplicate settings between project and target levels
+
+### Dependency Graph Cycles
+
+Tuist validates the dependency graph and will error on cycles:
+
+```bash
+tuist graph
+```
+
+Review the graph visualization to identify and break circular dependencies.
+
+### External Dependencies Not Found
+
+If external dependencies aren't resolving:
+
+```bash
+# Force reinstall dependencies
+rm -rf Tuist/Dependencies
+tuist install
+tuist generate
+```
+
+### Test Target Configuration
+
+If tests fail after migration:
+
+1. Verify the test target has `.xctest` dependency
+2. Check that test host configuration matches the original
+3. Ensure test resources are properly included
+
+## Migration Checklist
+
+Use this checklist to track your migration progress:
+
+- [ ] Create Tuist scaffold files
+- [ ] Set up CI validation pipeline
+- [ ] Extract project build settings to xcconfig
+- [ ] Extract package dependencies
+- [ ] Determine target migration order
+- [ ] Migrate each target (create separate PRs)
+  - [ ] Extract target build settings
+  - [ ] Define target in Project.swift
+  - [ ] Validate builds successfully
+  - [ ] Migrate associated test target
+  - [ ] Validate tests pass
+- [ ] Update CI/CD pipelines
+- [ ] Remove old .xcodeproj file
+- [ ] Update team documentation
+
+## Next Steps
+
+After completing the migration:
+
+<CardGroup cols={2}>
+
+<Card title="Enable Binary Caching" icon="bolt" href="/guides/build-optimization">
+  Speed up builds with Tuist's binary caching feature
+</Card>
+
+<Card title="Optimize Project Structure" icon="sitemap" href="/guides/project-structure">
+  Learn best practices for organizing your Tuist projects
+</Card>
+
+<Card title="Manage Dependencies" icon="box" href="/guides/dependencies">
+  Master dependency management with Tuist
+</Card>
+
+<Card title="Set Up CI/CD" icon="rotate" href="/guides/ci-cd">
+  Configure continuous integration for your Tuist project
+</Card>
+
+</CardGroup>

@@ -1,0 +1,247 @@
+---
+title: "tuist test"
+description: "Test your Tuist project"
+---
+
+## Overview
+
+The `tuist test` command runs tests for your Tuist project. It generates the Xcode workspace if needed, builds the test targets, and executes the tests with comprehensive options for filtering and configuration.
+
+## Usage
+
+```bash
+tuist test [options] [scheme]
+```
+
+## Options
+
+<ParamField path="--path" type="string" default=".">
+  The path to the directory that contains the project to be tested.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+<ParamField path="--clean" type="boolean" default="false">
+  Clean the project before testing it.
+</ParamField>
+
+<ParamField path="-c" type="boolean">
+  Short form of `--clean`.
+</ParamField>
+
+<ParamField path="--no-upload" type="boolean" default="false">
+  Don't persist test results to the server for test selection.
+</ParamField>
+
+<ParamField path="-n" type="boolean">
+  Short form of `--no-upload`.
+</ParamField>
+
+<ParamField path="--device" type="string">
+  Test on a specific device.
+</ParamField>
+
+<ParamField path="-d" type="string">
+  Short form of `--device`.
+</ParamField>
+
+<ParamField path="--platform" type="string">
+  Test on a specific platform (iOS, macOS, tvOS, visionOS, watchOS).
+</ParamField>
+
+<ParamField path="--os" type="string">
+  Test with a specific version of the OS.
+</ParamField>
+
+<ParamField path="-o" type="string">
+  Short form of `--os`.
+</ParamField>
+
+<ParamField path="--rosetta" type="boolean" default="false">
+  Append arch=x86_64 to the destination to run the simulator in Rosetta mode.
+</ParamField>
+
+<ParamField path="--configuration" type="string">
+  The configuration to be used when testing the scheme (e.g., Debug, Release).
+</ParamField>
+
+<ParamField path="-C" type="string">
+  Short form of `--configuration`.
+</ParamField>
+
+<ParamField path="--skip-ui-tests" type="boolean" default="false">
+  Skip testing UI Tests targets.
+</ParamField>
+
+<ParamField path="--skip-unit-tests" type="boolean" default="false">
+  Skip testing Unit Tests targets.
+</ParamField>
+
+<ParamField path="--result-bundle-path" type="string">
+  Path where test result bundle will be saved.
+</ParamField>
+
+<ParamField path="-T" type="string">
+  Short form of `--result-bundle-path`.
+</ParamField>
+
+<ParamField path="--test-plan" type="string">
+  The test plan to run.
+</ParamField>
+
+<ParamField path="--test-targets" type="string[]">
+  The list of test identifiers you want to test. Expected format is `TestTarget[/TestClass[/TestMethod]]`. Applied before `--skip-testing`.
+</ParamField>
+
+<ParamField path="--skip-test-targets" type="string[]">
+  The list of test identifiers you want to skip testing. Expected format is `TestTarget[/TestClass[/TestMethod]]`.
+</ParamField>
+
+<ParamField path="--filter-configurations" type="string[]">
+  The list of test plan configurations you want to test. Applied before `--skip-configuration`.
+</ParamField>
+
+<ParamField path="--skip-configurations" type="string[]">
+  The list of test plan configurations you want to skip testing.
+</ParamField>
+
+<ParamField path="--no-binary-cache" type="boolean" default="false">
+  Ignore binary cache and use sources only.
+</ParamField>
+
+<ParamField path="--no-selective-testing" type="boolean" default="false">
+  Run all tests without using selective testing. By default, Tuist only runs tests affected by code changes.
+</ParamField>
+
+<ParamField path="--generate-only" type="boolean" default="false">
+  Generate the project and skip testing. Useful for debugging purposes.
+</ParamField>
+
+<ParamField path="--without-building" type="boolean" default="false">
+  Run the tests without building first.
+</ParamField>
+
+<ParamField path="--build-only" type="boolean" default="false">
+  Build the tests but don't run them.
+</ParamField>
+
+<ParamField path="--skip-quarantine" type="boolean" default="false">
+  Disable the quarantine feature and run tests regardless of whether they are quarantined on the server.
+</ParamField>
+
+## Arguments
+
+<ParamField path="scheme" type="string">
+  The scheme to be tested. By default, it tests all the testable targets of the project in the current directory.
+</ParamField>
+
+<ParamField path="--" type="string[]">
+  Arguments after `--` are passed through to xcodebuild. Example: `tuist test -- -destination 'platform=iOS Simulator,name=iPhone 15' -parallel-testing-enabled YES`
+</ParamField>
+
+## Examples
+
+### Run all tests
+
+```bash
+tuist test
+```
+
+Runs all testable targets in the current project.
+
+### Test specific scheme
+
+```bash
+tuist test MyAppTests
+```
+
+Runs tests for the `MyAppTests` scheme.
+
+### Clean test
+
+```bash
+tuist test --clean MyAppTests
+```
+
+Cleans and tests the `MyAppTests` scheme.
+
+### Test on specific device
+
+```bash
+tuist test --device "iPhone 15 Pro" MyAppTests
+```
+
+Runs tests on the iPhone 15 Pro simulator.
+
+### Skip UI tests
+
+```bash
+tuist test --skip-ui-tests
+```
+
+Runs only unit tests, skipping UI tests.
+
+### Test specific test cases
+
+```bash
+tuist test --test-targets MyTests/LoginTests/testValidLogin
+```
+
+Runs only the `testValidLogin` method in the `LoginTests` class.
+
+### Save test results
+
+```bash
+tuist test --result-bundle-path ./TestResults MyAppTests
+```
+
+Runs tests and saves the result bundle to `./TestResults`.
+
+### Run with test plan
+
+```bash
+tuist test --test-plan MyTestPlan MyApp
+```
+
+Runs tests using the specified test plan.
+
+### Disable selective testing
+
+```bash
+tuist test --no-selective-testing
+```
+
+Runs all tests without selective testing optimization.
+
+## Selective testing
+
+By default, Tuist uses selective testing to run only the tests affected by code changes. This significantly reduces test execution time in large projects. Use `--no-selective-testing` to disable this feature and run all tests.
+
+## Test quarantine
+
+Tuist can automatically quarantine flaky tests to prevent them from blocking your CI pipeline. Use `--skip-quarantine` to disable this feature and run all tests including quarantined ones.
+
+## Subcommands
+
+### `tuist test show`
+
+Show details about a specific test run.
+
+```bash
+tuist test show [test-run-id]
+```
+
+### `tuist test case`
+
+Manage individual test cases.
+
+```bash
+tuist test case [subcommand]
+```
+
+## Related
+
+- [Build command](/cli/build)
+- [Generate command](/cli/generate)

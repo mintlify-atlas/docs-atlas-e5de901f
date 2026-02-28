@@ -1,0 +1,578 @@
+---
+title: Swift Package Registry
+description: Host and distribute Swift packages privately with Tuist's package registry
+---
+
+Tuist provides a Swift package registry that lets you host private Swift packages, control access, and integrate seamlessly with Swift Package Manager.
+
+## Overview
+
+The Tuist Registry provides:
+
+<CardGroup cols={3}>
+  <Card title="Private Packages" icon="lock">
+    Host proprietary Swift packages securely
+  </Card>
+  <Card title="Team Access Control" icon="users">
+    Manage who can access your packages
+  </Card>
+  <Card title="Version Management" icon="tags">
+    Publish and manage package versions
+  </Card>
+</CardGroup>
+
+<Info>
+  Tuist Registry follows the official Swift Package Registry specification, ensuring compatibility with Swift Package Manager.
+</Info>
+
+## Why Use a Private Registry?
+
+### Benefits
+
+<AccordionGroup>
+  <Accordion title="Keep code private" icon="eye-slash">
+    - Proprietary business logic
+    - Internal tools and utilities
+    - Company-specific frameworks
+    - Avoid exposing code publicly
+  </Accordion>
+  
+  <Accordion title="Better than Git dependencies" icon="code-compare">
+    **Registry packages:**
+    - Immutable versions
+    - Faster resolution
+    - Better caching
+    - No Git history bloat
+    
+    **Git dependencies:**
+    - Require full repository clone
+    - Slower resolution
+    - Cache invalidation issues
+    - Expose full Git history
+  </Accordion>
+  
+  <Accordion title="Enterprise control" icon="building">
+    - Audit package downloads
+    - Control who accesses what
+    - Require authentication
+    - Track usage analytics
+  </Accordion>
+</AccordionGroup>
+
+## Getting Started
+
+### Setup Authentication
+
+<Steps>
+  <Step title="Authenticate with Tuist">
+    ```bash
+    tuist auth
+    ```
+  </Step>
+  
+  <Step title="Configure registry">
+    Link your project to enable registry access:
+    ```bash
+    tuist project create
+    ```
+  </Step>
+  
+  <Step title="Setup registry in Swift Package Manager">
+    Configure SPM to use Tuist Registry:
+    ```bash
+    tuist registry setup
+    ```
+    
+    This configures `~/.swiftpm/configuration/registries.json`
+  </Step>
+</Steps>
+
+### Publish a Package
+
+<Steps>
+  <Step title="Prepare your package">
+    Ensure your package has a valid `Package.swift`:
+    ```swift
+    // Package.swift
+    let package = Package(
+        name: "MyLibrary",
+        platforms: [.iOS(.v15)],
+        products: [
+            .library(
+                name: "MyLibrary",
+                targets: ["MyLibrary"]
+            ),
+        ],
+        targets: [
+            .target(name: "MyLibrary"),
+        ]
+    )
+    ```
+  </Step>
+  
+  <Step title="Tag a version">
+    Create a semantic version tag:
+    ```bash
+    git tag 1.0.0
+    git push --tags
+    ```
+  </Step>
+  
+  <Step title="Publish to registry">
+    ```bash
+    tuist registry publish
+    ```
+    
+    Tuist will:
+    - Validate the package
+    - Upload to the registry
+    - Make it available to your team
+  </Step>
+</Steps>
+
+<Tip>
+  You can also publish from CI to automate package distribution.
+</Tip>
+
+## Using Registry Packages
+
+### In Package.swift
+
+Add registry packages as dependencies:
+
+```swift Package.swift
+import PackageDescription
+
+let package = Package(
+    name: "MyApp",
+    dependencies: [
+        // Tuist registry package
+        .package(
+            id: "com.acme.MyLibrary",
+            from: "1.0.0"
+        ),
+        
+        // Traditional Git dependency for comparison
+        // .package(
+        //     url: "https://github.com/acme/MyLibrary",
+        //     from: "1.0.0"
+        // )
+    ],
+    targets: [
+        .target(
+            name: "MyApp",
+            dependencies: ["MyLibrary"]
+        ),
+    ]
+)
+```
+
+### In Tuist Projects
+
+Use registry packages in your Tuist project:
+
+```swift Project.swift
+import ProjectDescription
+
+let project = Project(
+    name: "MyApp",
+    targets: [
+        .target(
+            name: "MyApp",
+            dependencies: [
+                .package(product: "MyLibrary", type: .runtime)
+            ]
+        ),
+    ],
+    packages: [
+        .remote(
+            id: "com.acme.MyLibrary",
+            version: "1.0.0"
+        )
+    ]
+)
+```
+
+### Resolution
+
+Swift Package Manager will:
+1. Check Tuist Registry first
+2. Download the package archive
+3. Cache it locally
+4. Link it to your project
+
+## Package Scopes
+
+Organize packages with scopes (namespaces):
+
+```
+com.acme.networking     - Networking library
+com.acme.analytics      - Analytics SDK
+com.acme.ui-components  - UI component library
+```
+
+### Naming Convention
+
+Use reverse-domain notation:
+- **Scope**: Company or organization (`com.acme`)
+- **Name**: Package name (`networking`)
+- **Full ID**: `com.acme.networking`
+
+<Warning>
+  Package IDs must be unique within your organization. Choose meaningful, descriptive names.
+</Warning>
+
+## Version Management
+
+### Semantic Versioning
+
+Follow SemVer for version numbers:
+
+- **Major** (1.0.0): Breaking changes
+- **Minor** (1.1.0): New features, backward compatible
+- **Patch** (1.0.1): Bug fixes, backward compatible
+
+```bash
+# Publish major version
+git tag 2.0.0
+tuist registry publish
+
+# Publish minor version  
+git tag 1.1.0
+tuist registry publish
+
+# Publish patch version
+git tag 1.0.1
+tuist registry publish
+```
+
+### Version Constraints
+
+Consumers specify version requirements:
+
+<Tabs>
+  <Tab title="Exact Version">
+    ```swift
+    .package(id: "com.acme.MyLibrary", exact: "1.0.0")
+    ```
+    
+    Use when you need a specific version.
+  </Tab>
+  
+  <Tab title="Range">
+    ```swift
+    .package(id: "com.acme.MyLibrary", from: "1.0.0")
+    ```
+    
+    Allows minor and patch updates (e.g., 1.0.0 to 1.9.9).
+  </Tab>
+  
+  <Tab title="Up to Next Major">
+    ```swift
+    .package(
+        id: "com.acme.MyLibrary",
+        "1.0.0"..<"2.0.0"
+    )
+    ```
+    
+    Prevent breaking changes.
+  </Tab>
+  
+  <Tab title="Branch">
+    ```swift
+    .package(id: "com.acme.MyLibrary", branch: "main")
+    ```
+    
+    For development only, not recommended for production.
+  </Tab>
+</Tabs>
+
+### List Versions
+
+View all published versions:
+
+```bash
+tuist registry list com.acme.MyLibrary
+```
+
+Output:
+```
+Available versions for com.acme.MyLibrary:
+  2.0.0 (latest)
+  1.2.1
+  1.2.0
+  1.1.0
+  1.0.0
+```
+
+## Access Control
+
+### Authentication
+
+Registry packages require authentication:
+
+```bash
+# Login
+tuist auth
+
+# Logout
+tuist auth logout
+```
+
+Credentials are stored securely in your system keychain.
+
+### Team Access
+
+Control who can access packages:
+
+- **Organization members**: Automatic access to all packages
+- **External collaborators**: Grant specific package access
+- **Public packages**: Anyone can download (optional)
+
+### CI/CD Authentication
+
+Use tokens for CI authentication:
+
+<CodeGroup>
+```yaml GitHub Actions
+- name: Setup Tuist Registry
+  run: |
+    tuist registry setup
+  env:
+    TUIST_TOKEN: ${{ secrets.TUIST_TOKEN }}
+```
+
+```yaml GitLab CI
+setup_registry:
+  script:
+    - tuist registry setup
+  variables:
+    TUIST_TOKEN: $TUIST_TOKEN
+```
+</CodeGroup>
+
+<Tip>
+  Generate CI tokens in Tuist Cloud under Settings > Tokens.
+</Tip>
+
+## Publishing from CI
+
+Automate package releases:
+
+<CodeGroup>
+```yaml GitHub Actions
+name: Publish Package
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+jobs:
+  publish:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install Tuist
+        run: curl -Ls https://install.tuist.io | bash
+      
+      - name: Publish to registry
+        run: tuist registry publish
+        env:
+          TUIST_TOKEN: ${{ secrets.TUIST_TOKEN }}
+```
+
+```yaml GitLab CI
+publish:
+  stage: deploy
+  script:
+    - curl -Ls https://install.tuist.io | bash
+    - tuist registry publish
+  only:
+    - tags
+  variables:
+    TUIST_TOKEN: $TUIST_TOKEN
+```
+</CodeGroup>
+
+## Registry Analytics
+
+Track package usage in Tuist Cloud:
+
+- **Download counts** per version
+- **Most popular packages** in your organization
+- **Active users** downloading packages
+- **Version adoption** rates
+
+### Example Insights
+
+```
+com.acme.networking
+  Downloads (30 days): 1,247
+  Active users: 23
+  Latest version: 2.1.0 (78% adoption)
+  
+Version breakdown:
+  2.1.0: 975 downloads
+  2.0.0: 198 downloads
+  1.9.0: 74 downloads
+```
+
+## Migration from Git Dependencies
+
+Switch existing packages to the registry:
+
+<Steps>
+  <Step title="Publish package to registry">
+    ```bash
+    cd MyLibrary
+    git tag 1.0.0
+    tuist registry publish
+    ```
+  </Step>
+  
+  <Step title="Update consumers">
+    Change from:
+    ```swift
+    .package(
+        url: "https://github.com/acme/MyLibrary",
+        from: "1.0.0"
+    )
+    ```
+    
+    To:
+    ```swift
+    .package(
+        id: "com.acme.MyLibrary",
+        from: "1.0.0"
+    )
+    ```
+  </Step>
+  
+  <Step title="Test resolution">
+    ```bash
+    swift package resolve
+    ```
+    
+    Verify the package is fetched from the registry.
+  </Step>
+  
+  <Step title="Remove Git dependency (optional)">
+    You can archive the Git repository or keep it for open-source contributions.
+  </Step>
+</Steps>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use semantic versioning" icon="tag">
+    - Follow SemVer strictly
+    - Document breaking changes
+    - Use major versions for breaking changes
+    - Avoid breaking changes in minor/patch releases
+  </Accordion>
+  
+  <Accordion title="Automate publishing" icon="robot">
+    - Publish from CI on tag push
+    - Run tests before publishing
+    - Validate package structure
+    - Generate changelogs automatically
+  </Accordion>
+  
+  <Accordion title="Document packages" icon="book">
+    - Maintain a comprehensive README
+    - Include usage examples
+    - Document breaking changes
+    - Keep a CHANGELOG.md
+  </Accordion>
+  
+  <Accordion title="Organize with scopes" icon="sitemap">
+    - Use consistent naming
+    - Group related packages
+    - Separate by domain (networking, UI, analytics)
+    - Use company/org prefix
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Package not found" icon="magnifying-glass">
+    **Possible causes:**
+    - Package not published yet
+    - Registry not configured
+    - Authentication expired
+    
+    **Solutions:**
+    - Verify package is published: `tuist registry list`
+    - Run `tuist registry setup` again
+    - Re-authenticate: `tuist auth`
+  </Accordion>
+  
+  <Accordion title="Publishing fails" icon="xmark">
+    **Possible causes:**
+    - Invalid Package.swift
+    - Missing git tag
+    - Version already exists
+    
+    **Solutions:**
+    - Validate package: `swift build`
+    - Check git tags: `git tag -l`
+    - Use a new version number
+  </Accordion>
+  
+  <Accordion title="Authentication issues in CI" icon="key">
+    **Possible causes:**
+    - Token not set
+    - Token expired
+    - Wrong environment variable
+    
+    **Solutions:**
+    - Set `TUIST_TOKEN` environment variable
+    - Regenerate token in Tuist Cloud
+    - Verify token has correct permissions
+  </Accordion>
+</AccordionGroup>
+
+## Registry Specification
+
+Tuist Registry implements the [Swift Package Registry Service Specification](https://github.com/swiftlang/swift-package-manager/blob/main/Documentation/Registry.md).
+
+### Supported Features
+
+- ✅ Package publication
+- ✅ Version listing
+- ✅ Package download
+- ✅ Package metadata
+- ✅ Authentication
+- ✅ Scope-based organization
+
+### Future Enhancements
+
+- Package signing and verification
+- Mirror repositories
+- Dependency scanning
+- Vulnerability detection
+
+## Pricing
+
+Registry usage is included in Tuist Cloud plans:
+
+- **Free**: Up to 5 packages
+- **Team**: Unlimited packages
+- **Enterprise**: Unlimited packages + advanced analytics
+
+<Info>
+  Contact sales for custom registry requirements or on-premises deployment.
+</Info>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Binary Caching" icon="box" href="/features/cache">
+    Speed up builds with smart caching
+  </Card>
+  <Card title="Build Insights" icon="chart-line" href="/features/insights">
+    Monitor build performance
+  </Card>
+</CardGroup>

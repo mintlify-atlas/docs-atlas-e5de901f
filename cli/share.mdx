@@ -1,0 +1,168 @@
+---
+title: "tuist share"
+description: "Generate a link to share your app"
+---
+
+## Overview
+
+The `tuist share` command generates a shareable preview link for your iOS, macOS, tvOS, visionOS, or watchOS app. This allows you to distribute app builds to testers, clients, or team members without going through TestFlight or the App Store.
+
+## Usage
+
+```bash
+tuist share [options] [apps...]
+```
+
+## Options
+
+<ParamField path="--path" type="string" default=".">
+  The path to the directory that contains a Tuist or Xcode project with a buildable scheme that can output runnable artifacts.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+<ParamField path="--configuration" type="string">
+  The configuration of the app to share (e.g., Debug, Release). Ignored when app paths are passed directly.
+</ParamField>
+
+<ParamField path="-C" type="string">
+  Short form of `--configuration`.
+</ParamField>
+
+<ParamField path="--platforms" type="string[]">
+  The platforms to share the app for: iOS, tvOS, visionOS, watchOS, or macOS. Ignored when app paths are passed directly.
+</ParamField>
+
+<ParamField path="--derived-data-path" type="string">
+  The derived data path to find the apps in. When absent, uses the system-configured derived data path.
+</ParamField>
+
+<ParamField path="--json" type="boolean" default="false">
+  Output in JSON format.
+</ParamField>
+
+<ParamField path="--track" type="string">
+  The track of the preview (e.g., 'beta', 'nightly'). Useful for organizing different distribution channels.
+</ParamField>
+
+## Arguments
+
+<ParamField path="apps" type="string[]">
+  The app name to be looked up in the built products directory, or the paths to the app bundles (.app), an .ipa archive, or an .apk file.
+</ParamField>
+
+## Examples
+
+### Share by app name
+
+```bash
+tuist share MyApp
+```
+
+Looks for `MyApp` in the build products directory and generates a shareable link.
+
+### Share specific app bundle
+
+```bash
+tuist share ~/DerivedData/MyApp.app
+```
+
+Shares the app bundle at the specified path.
+
+### Share IPA file
+
+```bash
+tuist share ./build/MyApp.ipa
+```
+
+Shares an IPA archive directly.
+
+### Share with configuration
+
+```bash
+tuist share --configuration Release MyApp
+```
+
+Shares the Release build of MyApp.
+
+### Share for specific platforms
+
+```bash
+tuist share --platforms iOS tvOS MyApp
+```
+
+Shares MyApp for iOS and tvOS platforms.
+
+### Share with track
+
+```bash
+tuist share --track beta MyApp
+```
+
+Shares MyApp on the 'beta' track.
+
+### Share with JSON output
+
+```bash
+tuist share --json MyApp
+```
+
+Outputs the share information in JSON format for scripting.
+
+### Share multiple apps
+
+```bash
+tuist share App1 App2 App3
+```
+
+Generates shareable links for multiple apps at once.
+
+## How it works
+
+1. Tuist locates the app bundle(s) in your build products or at the specified paths
+2. Uploads the app to Tuist's preview service
+3. Generates a unique, shareable URL
+4. Returns the URL for distribution
+
+## Preview links
+
+Preview links:
+
+- Are unique and time-limited
+- Can be shared with anyone via email, Slack, etc.
+- Allow recipients to install and test the app
+- Support iOS, tvOS, visionOS, watchOS, and macOS apps
+- Don't require TestFlight or App Store enrollment
+
+## Tracks
+
+Tracks help organize different distribution channels:
+
+```bash
+tuist share --track nightly MyApp  # Nightly builds
+tuist share --track beta MyApp     # Beta releases
+tuist share --track stable MyApp   # Stable releases
+```
+
+Recipients can subscribe to specific tracks to always get the latest build for that channel.
+
+## Android support
+
+You can also share Android APK files:
+
+```bash
+tuist share ./app-release.apk
+```
+
+## Requirements
+
+- A Tuist account and authenticated session (`tuist auth`)
+- Built app artifacts (.app, .ipa, or .apk)
+- Network connection to upload to Tuist's servers
+
+## Related
+
+- [Run command](/cli/run)
+- [Build command](/cli/build)

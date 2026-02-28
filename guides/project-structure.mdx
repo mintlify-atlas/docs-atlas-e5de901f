@@ -1,0 +1,564 @@
+---
+title: 'Project Structure'
+description: 'Learn how to organize and structure your Tuist projects for scalability and maintainability'
+icon: 'sitemap'
+---
+
+## Overview
+
+A well-structured Tuist project improves maintainability, reduces build times, and makes collaboration easier. This guide covers best practices for organizing your projects, targets, and dependencies.
+
+## Understanding Tuist Directory Structure
+
+### Standard Project Layout
+
+A typical Tuist project follows this structure:
+
+```bash
+MyProject/
+├── Tuist/
+│   ├── ProjectDescriptionHelpers/
+│   │   └── Project+Templates.swift
+│   └── Package.swift
+├── Tuist.swift
+├── Workspace.swift
+├── Projects/
+│   ├── App/
+│   │   ├── Project.swift
+│   │   ├── Sources/
+│   │   ├── Resources/
+│   │   └── Tests/
+│   └── Features/
+│       ├── FeatureA/
+│       │   └── Project.swift
+│       └── FeatureB/
+│           └── Project.swift
+└── xcconfigs/
+    ├── Project.xcconfig
+    └── Targets/
+```
+
+### Key Directories Explained
+
+#### Tuist Directory
+
+The `Tuist/` directory serves two critical purposes:
+
+1. **Signals the project root**: Allows running Tuist commands from any subdirectory
+2. **Contains shared configuration**:
+   - `ProjectDescriptionHelpers/`: Reusable Swift code for manifest files
+   - `Package.swift`: External dependency definitions
+
+<Tip>
+Place the `Tuist/` directory at your repository root. This allows you to run Tuist commands from anywhere within the project.
+</Tip>
+
+#### Root Directory Files
+
+**Tuist.swift**: Project-wide configuration
+
+```swift Tuist.swift
+import ProjectDescription
+
+let tuist = Tuist(
+    fullHandle: "your-org/your-project",
+    project: .tuist(
+        generationOptions: .options(
+            enableCaching: true,
+            disableSandbox: false
+        )
+    )
+)
+```
+
+**Workspace.swift**: Groups multiple projects (optional)
+
+```swift Workspace.swift
+import ProjectDescription
+
+let workspace = Workspace(
+    name: "MyWorkspace",
+    projects: [
+        "Projects/**"
+    ]
+)
+```
+
+**Project.swift**: Defines individual project targets
+
+```swift Project.swift
+import ProjectDescription
+
+let project = Project(
+    name: "MyApp",
+    targets: [
+        // Target definitions
+    ]
+)
+```
+
+<Note>
+Xcode workspaces in Tuist are optional. Tuist auto-generates a workspace containing your project and its dependencies. Only use `Workspace.swift` if you need custom workspace configuration.
+</Note>
+
+## Organization Strategies
+
+### Single Project Structure
+
+Best for small to medium apps with straightforward requirements:
+
+```bash
+MyApp/
+├── Tuist/
+│   └── Package.swift
+├── Tuist.swift
+├── Project.swift
+├── Sources/
+│   ├── App/
+│   ├── Features/
+│   └── Core/
+├── Resources/
+└── Tests/
+```
+
+**When to use**:
+- Single application target
+- Limited feature complexity
+- Small team (1-5 developers)
+
+### Multi-Project Structure
+
+Best for larger applications with distinct feature modules:
+
+```bash
+MyApp/
+├── Tuist/
+├── Tuist.swift
+├── Workspace.swift
+├── Projects/
+│   ├── App/
+│   │   └── Project.swift
+│   ├── FeatureA/
+│   │   └── Project.swift
+│   ├── FeatureB/
+│   │   └── Project.swift
+│   └── Core/
+│       └── Project.swift
+└── xcconfigs/
+```
+
+**When to use**:
+- Multiple feature teams
+- Need for clear module boundaries
+- Desire for parallel development
+- Teams of 5+ developers
+
+### Micro-Framework Architecture
+
+Best for large-scale apps with strict separation of concerns:
+
+```bash
+MyApp/
+├── Tuist/
+├── Workspace.swift
+├── Projects/
+│   ├── App/
+│   ├── Features/
+│   │   ├── Authentication/
+│   │   │   ├── Project.swift
+│   │   │   ├── Sources/
+│   │   │   ├── Tests/
+│   │   │   └── Example/
+│   │   ├── Dashboard/
+│   │   └── Settings/
+│   ├── Core/
+│   │   ├── Networking/
+│   │   ├── Database/
+│   │   └── UI/
+│   └── Platform/
+│       ├── Analytics/
+│       └── Logging/
+```
+
+**When to use**:
+- Very large applications
+- Multiple teams working independently
+- Need for module reusability
+- Desire for selective compilation and testing
+
+## Target Organization Best Practices
+
+### Target Types
+
+Organize targets by their purpose:
+
+<CodeGroup>
+
+```swift Application Target
+.target(
+    name: "MyApp",
+    destinations: [.iPhone, .iPad],
+    product: .app,
+    bundleId: "com.example.myapp",
+    sources: ["Sources/**"],
+    resources: ["Resources/**"],
+    dependencies: [
+        .target(name: "FeatureA"),
+        .target(name: "Core")
+    ]
+)
+```
+
+```swift Framework Target
+.target(
+    name: "FeatureA",
+    destinations: [.iPhone, .iPad],
+    product: .framework,
+    bundleId: "com.example.featurea",
+    sources: ["Sources/**"],
+    dependencies: [
+        .target(name: "Core"),
+        .external(name: "Alamofire")
+    ]
+)
+```
+
+```swift Test Target
+.target(
+    name: "FeatureATests",
+    destinations: [.iPhone],
+    product: .unitTests,
+    bundleId: "com.example.featurea.tests",
+    sources: ["Tests/**"],
+    dependencies: [
+        .target(name: "FeatureA"),
+        .xctest
+    ]
+)
+```
+
+</CodeGroup>
+
+### Source File Organization
+
+#### Using Buildable Folders (Recommended)
+
+Tuist 4.62.0+ supports buildable folders (Xcode 16+), which automatically sync with the file system:
+
+```swift Project.swift
+let target = Target(
+    name: "App",
+    buildableFolders: [
+        "App/Sources",
+        "App/Resources"
+    ]
+)
+```
+
+**Benefits**:
+- No regeneration needed when adding/removing files
+- AI-friendly (coding assistants can modify files freely)
+- Eliminates merge conflicts in project files
+- Simpler configuration
+
+<Tip>
+Buildable folders are recommended for all new projects. They provide a better developer experience and work seamlessly with AI coding tools.
+</Tip>
+
+#### Using Wildcard Patterns (Traditional)
+
+For older Xcode versions or more control:
+
+```swift Project.swift
+let target = Target(
+    name: "App",
+    sources: ["App/Sources/**"],
+    resources: ["App/Resources/**"]
+)
+```
+
+### Dependency Organization
+
+#### Layered Architecture
+
+Organize dependencies in layers:
+
+```swift
+// App layer - depends on features
+App → Features
+
+// Feature layer - depends on core
+Features → Core
+
+// Core layer - depends on external packages
+Core → External Dependencies
+```
+
+<Warning>
+Avoid circular dependencies. Tuist validates your dependency graph and will error on cycles.
+</Warning>
+
+#### Example Layered Structure
+
+```swift Project.swift
+import ProjectDescription
+import ProjectDescriptionHelpers
+
+let project = Project(
+    name: "MyApp",
+    targets: [
+        // App Target - Top Layer
+        .target(
+            name: "MyApp",
+            product: .app,
+            dependencies: [
+                .target(name: "FeatureAuthentication"),
+                .target(name: "FeatureDashboard")
+            ]
+        ),
+        // Feature Targets - Middle Layer
+        .target(
+            name: "FeatureAuthentication",
+            product: .framework,
+            dependencies: [
+                .target(name: "CoreNetworking"),
+                .target(name: "CoreUI")
+            ]
+        ),
+        // Core Targets - Bottom Layer
+        .target(
+            name: "CoreNetworking",
+            product: .framework,
+            dependencies: [
+                .external(name: "Alamofire")
+            ]
+        ),
+        .target(
+            name: "CoreUI",
+            product: .framework,
+            dependencies: []
+        )
+    ]
+)
+```
+
+## Build Settings Organization
+
+### Using XCConfig Files
+
+Extract build settings to xcconfig files for better maintainability:
+
+```bash
+xcconfigs/
+├── Project.xcconfig              # Project-level settings
+├── Targets/
+│   ├── App.xcconfig             # App target settings
+│   ├── FeatureA.xcconfig        # Feature settings
+│   └── Tests.xcconfig           # Test settings
+└── Shared/
+    ├── Debug.xcconfig           # Debug configuration
+    └── Release.xcconfig         # Release configuration
+```
+
+<CodeGroup>
+
+```bash xcconfigs/Project.xcconfig
+// Project-level settings
+IPHONEOS_DEPLOYMENT_TARGET = 15.0
+SWIFT_VERSION = 5.9
+MARKETING_VERSION = 1.0.0
+```
+
+```bash xcconfigs/Shared/Debug.xcconfig
+#include "../Project.xcconfig"
+
+SWIFT_OPTIMIZATION_LEVEL = -Onone
+SWIFT_COMPILATION_MODE = incremental
+ENABLE_TESTABILITY = YES
+```
+
+```bash xcconfigs/Shared/Release.xcconfig
+#include "../Project.xcconfig"
+
+SWIFT_OPTIMIZATION_LEVEL = -O
+SWIFT_COMPILATION_MODE = wholemodule
+ENABLE_TESTABILITY = NO
+```
+
+</CodeGroup>
+
+Reference in your manifest:
+
+```swift Project.swift
+let project = Project(
+    name: "MyApp",
+    settings: .settings(configurations: [
+        .debug(name: "Debug", xcconfig: "./xcconfigs/Shared/Debug.xcconfig"),
+        .release(name: "Release", xcconfig: "./xcconfigs/Shared/Release.xcconfig")
+    ]),
+    targets: [
+        .target(
+            name: "MyApp",
+            settings: .settings(configurations: [
+                .debug(name: "Debug", xcconfig: "./xcconfigs/Targets/App.xcconfig"),
+                .release(name: "Release", xcconfig: "./xcconfigs/Targets/App.xcconfig")
+            ])
+        )
+    ]
+)
+```
+
+## Using ProjectDescriptionHelpers
+
+Create reusable code to reduce duplication across manifests:
+
+```swift Tuist/ProjectDescriptionHelpers/Project+Templates.swift
+import ProjectDescription
+
+public extension Project {
+    static func feature(
+        name: String,
+        dependencies: [TargetDependency] = []
+    ) -> Project {
+        return Project(
+            name: name,
+            targets: [
+                .target(
+                    name: name,
+                    destinations: [.iPhone, .iPad],
+                    product: .framework,
+                    bundleId: "com.example.\(name.lowercased())",
+                    sources: ["Sources/**"],
+                    resources: ["Resources/**"],
+                    dependencies: dependencies
+                ),
+                .target(
+                    name: "\(name)Tests",
+                    destinations: [.iPhone],
+                    product: .unitTests,
+                    bundleId: "com.example.\(name.lowercased()).tests",
+                    sources: ["Tests/**"],
+                    dependencies: [
+                        .target(name: name),
+                        .xctest
+                    ]
+                )
+            ]
+        )
+    }
+}
+```
+
+Use in your manifests:
+
+```swift Projects/FeatureA/Project.swift
+import ProjectDescription
+import ProjectDescriptionHelpers
+
+let project = Project.feature(
+    name: "FeatureA",
+    dependencies: [
+        .target(name: "Core")
+    ]
+)
+```
+
+## Best Practices
+
+### Avoid Complex Build Configurations
+
+Stick to standard `Debug` and `Release` configurations:
+
+<Warning>
+Avoid using build configurations to model remote environments (e.g., `Debug-Production`, `Release-Staging`). This leads to complexity and potential inconsistencies.
+</Warning>
+
+**Instead**:
+- Use environment variables at runtime for different environments
+- Use compiler directives to conditionally compile code
+- Keep configurations simple and consistent
+
+```swift App Configuration
+// Good: Runtime environment switching
+let environment: Environment = {
+    #if DEBUG
+    return ProcessInfo.processInfo.environment["API_ENV"] == "production" 
+        ? .production 
+        : .development
+    #else
+    return .production
+    #endif
+}()
+```
+
+### Validate Your Graph
+
+Regularly check your dependency graph:
+
+```bash
+# Visualize the graph
+tuist graph
+
+# Check for issues
+tuist generate
+```
+
+### Keep Projects Focused
+
+Each project should have a single, clear responsibility:
+
+- **App**: Composition and app-specific code
+- **Features**: User-facing functionality
+- **Core**: Shared utilities and infrastructure
+- **Platform**: Third-party integrations
+
+## Troubleshooting
+
+### Project Generation Failures
+
+If `tuist generate` fails:
+
+1. Check for circular dependencies: `tuist graph`
+2. Validate manifest syntax
+3. Ensure all referenced files exist
+4. Check that target names are unique
+
+### Slow Build Times
+
+If builds are slow:
+
+1. Break large targets into smaller modules
+2. Use static linking in release builds
+3. Enable binary caching (see [Build Optimization](/guides/build-optimization))
+4. Review dependency graph depth
+
+### Merge Conflicts
+
+If you still experience merge conflicts:
+
+1. Use buildable folders instead of explicit file lists
+2. Keep manifest files simple and focused
+3. Use ProjectDescriptionHelpers for shared logic
+4. Have each team work in separate feature directories
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Manage Dependencies" icon="box" href="/guides/dependencies">
+  Learn how to handle external and internal dependencies
+</Card>
+
+<Card title="Optimize Builds" icon="bolt" href="/guides/build-optimization">
+  Speed up compilation with caching and optimization techniques
+</Card>
+
+<Card title="Set Up CI/CD" icon="rotate" href="/guides/ci-cd">
+  Configure continuous integration for your structured project
+</Card>
+
+<Card title="Migrate from Xcode" icon="arrow-right-arrow-left" href="/guides/migrate-from-xcode">
+  Migrate an existing project to this structure
+</Card>
+
+</CardGroup>

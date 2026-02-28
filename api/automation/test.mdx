@@ -1,0 +1,427 @@
+---
+title: Test Automation
+titleTemplate: :title | API Reference | Tuist Documentation
+description: API reference for test automation with Tuist's ProjectAutomation framework
+---
+
+# Test Automation
+
+Automating tests using the ProjectAutomation framework.
+
+## Overview
+
+The ProjectAutomation framework enables you to programmatically discover and run tests, making it ideal for custom test runners, CI/CD integration, and selective test execution.
+
+## Loading the Project Graph
+
+Start by loading the project graph:
+
+```swift
+import ProjectAutomation
+
+let graph = try Tuist.graph()
+```
+
+## Discovering Test Targets
+
+Test targets can be identified by their product type:
+
+```swift
+let testTargets = graph.projects.flatMap { project in
+    project.targets.filter { target in
+        target.product == "unit_tests" || target.product == "ui_tests"
+    }
+}
+```
+
+## Test Target Types
+
+### Unit Tests
+
+Targets with `product == "unit_tests"`:
+
+```swift
+let unitTestTargets = graph.projects.flatMap { project in
+    project.targets.filter { $0.product == "unit_tests" }
+}
+
+for target in unitTestTargets {
+    print("Unit test target: \(target.name)")
+    print("  Bundle ID: \(target.bundleId)")
+    print("  Test files: \(target.sources.count)")
+}
+```
+
+### UI Tests
+
+Targets with `product == "ui_tests"`:
+
+```swift
+let uiTestTargets = graph.projects.flatMap { project in
+    project.targets.filter { $0.product == "ui_tests" }
+}
+
+for target in uiTestTargets {
+    print("UI test target: \(target.name)")
+    print("  Bundle ID: \(target.bundleId)")
+}
+```
+
+## Example: Run All Tests
+
+```swift
+import Foundation
+import ProjectAutomation
+
+@main
+struct TestRunner {
+    static func main() throws {
+        let graph = try Tuist.graph()
+        
+        print("Discovering test targets...\n")
+        
+        // Find all test targets
+        let testTargets = graph.projects.flatMap { project -> [(String, Target)] in
+            project.targets
+                .filter { $0.product == "unit_tests" || $0.product == "ui_tests" }
+                .map { (project.name, $0) }
+        }
+        
+        print("Found \(testTargets.count) test targets\n")
+        
+        var results: [TestResult] = []
+        
+        // Run each test target
+        for (projectName, target) in testTargets {
+            print("Running \(target.name) in \(projectName)...")
+            let result = try runTests(target: target.name)
+            results.append(result)
+            
+            if result.passed {
+                print("✓ \(target.name): Passed\n")
+            } else {
+                print("✗ \(target.name): Failed\n")
+            }
+        }
+        
+        // Print summary
+        printSummary(results)
+    }
+    
+    static func runTests(target: String) throws -> TestResult {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcodebuild")
+        process.arguments = [
+            "test",
+            "-scheme", target,
+            "-destination", "platform=iOS Simulator,name=iPhone 15",
+            "-enableCodeCoverage", "YES"
+        ]
+        
+        try process.run()
+        process.waitUntilExit()
+        
+        return TestResult(
+            target: target,
+            passed: process.terminationStatus == 0
+        )
+    }
+    
+    static func printSummary(_ results: [TestResult]) {
+        let passed = results.filter { $0.passed }.count
+        let failed = results.count - passed
+        
+        print("\n" + String(repeating: "=", count: 50))
+        print("Test Summary")
+        print(String(repeating: "=", count: 50))
+        print("Total: \(results.count)")
+        print("Passed: \(passed)")
+        print("Failed: \(failed)")
+        
+        if failed > 0 {
+            print("\nFailed targets:")
+            for result in results where !result.passed {
+                print("  - \(result.target)")
+            }
+        }
+    }
+    
+    struct TestResult {
+        let target: String
+        let passed: Bool
+    }
+}
+```
+
+## Example: Selective Test Execution
+
+Run only specific tests based on criteria:
+
+```swift
+import Foundation
+import ProjectAutomation
+
+@main
+struct SelectiveTestRunner {
+    static func main() throws {
+        let graph = try Tuist.graph()
+        
+        // Get test filter from environment
+        let testFilter = ProcessInfo.processInfo.environment["TEST_FILTER"] ?? "unit"
+        
+        print("Test Filter: \(testFilter)\n")
+        
+        let allTests = graph.projects.flatMap { project -> [(String, Target)] in
+            project.targets
+                .filter { $0.product == "unit_tests" || $0.product == "ui_tests" }
+                .map { (project.name, $0) }
+        }
+        
+        // Filter based on criteria
+        let testsToRun = allTests.filter { (_, target) in
+            switch testFilter {
+            case "unit":
+                return target.product == "unit_tests"
+            case "ui":
+                return target.product == "ui_tests"
+            case "all":
+                return true
+            default:
+                return target.name.contains(testFilter)
+            }
+        }
+        
+        print("Running \(testsToRun.count) test targets\n")
+        
+        for (projectName, target) in testsToRun {
+            print("Testing \(target.name) from \(projectName)...")
+            try runTest(target: target)
+        }
+    }
+    
+    static func runTest(target: Target) throws {
+        print("  Product: \(target.product)")
+        print("  Sources: \(target.sources.count) files")
+        print("  Dependencies: \(target.dependencies.count)")
+        // Execute test
+    }
+}
+```
+
+## Example: Test Dependency Analysis
+
+Analyze test target dependencies:
+
+```swift
+import Foundation
+import ProjectAutomation
+
+@main
+struct TestDependencyAnalyzer {
+    static func main() throws {
+        let graph = try Tuist.graph()
+        
+        print("Test Dependency Analysis\n")
+        print(String(repeating: "=", count: 60))
+        
+        for project in graph.projects {
+            let testTargets = project.targets.filter { 
+                $0.product == "unit_tests" || $0.product == "ui_tests"
+            }
+            
+            guard !testTargets.isEmpty else { continue }
+            
+            print("\nProject: \(project.name)")
+            print("Path: \(project.path)\n")
+            
+            for target in testTargets {
+                print("  \(target.name) (\(target.product))")
+                print("  Bundle ID: \(target.bundleId)")
+                print("  Test Files: \(target.sources.count)")
+                print("  Dependencies:")
+                
+                if target.dependencies.isEmpty {
+                    print("    (none)")
+                } else {
+                    for dependency in target.dependencies {
+                        switch dependency {
+                        case .target(let name):
+                            print("    - Target: \(name)")
+                        case .external(let name):
+                            print("    - External: \(name)")
+                        case .framework(let path):
+                            print("    - Framework: \(path)")
+                        case .sdk(let name, _):
+                            print("    - SDK: \(name)")
+                        case .xctest:
+                            print("    - XCTest")
+                        default:
+                            print("    - Other")
+                        }
+                    }
+                }
+                print()
+            }
+        }
+    }
+}
+```
+
+## Example: Code Coverage Analysis
+
+Run tests with code coverage:
+
+```swift
+import Foundation
+import ProjectAutomation
+
+@main
+struct CoverageRunner {
+    static func main() throws {
+        let graph = try Tuist.graph()
+        let coverageTargets = ProcessInfo.processInfo.environment["COVERAGE_TARGETS"]?.split(separator: ",").map(String.init) ?? []
+        
+        print("Running tests with code coverage\n")
+        
+        // Find unit test targets
+        let unitTests = graph.projects.flatMap { project in
+            project.targets.filter { $0.product == "unit_tests" }
+        }
+        
+        for testTarget in unitTests {
+            print("Testing: \(testTarget.name)")
+            
+            // Determine coverage targets
+            let targets = coverageTargets.isEmpty ? 
+                findCoverageTargets(for: testTarget) : 
+                coverageTargets
+            
+            print("  Coverage targets: \(targets.joined(separator: ", "))")
+            
+            try runTestsWithCoverage(
+                testTarget: testTarget.name,
+                coverageTargets: targets
+            )
+        }
+    }
+    
+    static func findCoverageTargets(for testTarget: Target) -> [String] {
+        // Analyze dependencies to find targets to measure coverage for
+        testTarget.dependencies.compactMap { dependency in
+            switch dependency {
+            case .target(let name):
+                return name
+            default:
+                return nil
+            }
+        }
+    }
+    
+    static func runTestsWithCoverage(testTarget: String, coverageTargets: [String]) throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcodebuild")
+        
+        var arguments = [
+            "test",
+            "-scheme", testTarget,
+            "-destination", "platform=iOS Simulator,name=iPhone 15",
+            "-enableCodeCoverage", "YES"
+        ]
+        
+        // Add coverage targets
+        for target in coverageTargets {
+            arguments.append(contentsOf: ["-only-testing", target])
+        }
+        
+        process.arguments = arguments
+        
+        try process.run()
+        process.waitUntilExit()
+        
+        if process.terminationStatus == 0 {
+            print("  ✓ Tests passed with coverage\n")
+        } else {
+            print("  ✗ Tests failed\n")
+        }
+    }
+}
+```
+
+## Example: Parallel Test Execution
+
+Run tests in parallel for faster execution:
+
+```swift
+import Foundation
+import ProjectAutomation
+
+@main
+struct ParallelTestRunner {
+    static func main() async throws {
+        let graph = try Tuist.graph()
+        
+        let testTargets = graph.projects.flatMap { project in
+            project.targets.filter { $0.product == "unit_tests" }
+        }
+        
+        print("Running \(testTargets.count) test targets in parallel\n")
+        
+        // Run tests in parallel using async/await
+        await withTaskGroup(of: TestResult.self) { group in
+            for target in testTargets {
+                group.addTask {
+                    do {
+                        try await runTestAsync(target: target.name)
+                        return TestResult(target: target.name, passed: true)
+                    } catch {
+                        return TestResult(target: target.name, passed: false)
+                    }
+                }
+            }
+            
+            var results: [TestResult] = []
+            for await result in group {
+                results.append(result)
+                let status = result.passed ? "✓" : "✗"
+                print("\(status) \(result.target)")
+            }
+            
+            printSummary(results)
+        }
+    }
+    
+    static func runTestAsync(target: String) async throws {
+        // Async test execution
+    }
+    
+    static func printSummary(_ results: [TestResult]) {
+        let passed = results.filter { $0.passed }.count
+        print("\nSummary: \(passed)/\(results.count) passed")
+    }
+    
+    struct TestResult {
+        let target: String
+        let passed: Bool
+    }
+}
+```
+
+## Best Practices
+
+1. **Parallel Execution**: Run independent tests in parallel to reduce total test time.
+
+2. **Selective Testing**: Filter tests based on changes, affected targets, or test type.
+
+3. **Code Coverage**: Enable code coverage for unit tests to track test quality.
+
+4. **Retry Logic**: Implement retry logic for flaky tests.
+
+5. **Result Reporting**: Generate detailed test reports for CI/CD integration.
+
+6. **Test Isolation**: Ensure tests are isolated and can run independently.
+
+## Related APIs
+
+- [ProjectAutomation Overview](/api/automation/overview) - Framework overview
+- [Build Automation](/api/automation/build) - Build automation
+- [Target API](/api/target) - Target manifest definition

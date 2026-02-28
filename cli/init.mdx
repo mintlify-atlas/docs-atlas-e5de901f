@@ -1,0 +1,70 @@
+---
+title: "tuist init"
+description: "Get started with Tuist in your project"
+---
+
+## Overview
+
+The `tuist init` command helps you bootstrap a new Tuist project or add Tuist to an existing project. It guides you through an interactive setup process to configure your project structure.
+
+## Usage
+
+```bash
+tuist init [options]
+```
+
+## Options
+
+<ParamField path="--path" type="string" default=".">
+  The path to the directory from where to start. Defaults to the current directory.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+## Examples
+
+### Initialize in current directory
+
+```bash
+tuist init
+```
+
+This will start an interactive prompt to set up Tuist in your current directory.
+
+### Initialize in a specific directory
+
+```bash
+tuist init --path ~/MyProject
+```
+
+Sets up Tuist in the specified directory.
+
+## What it does
+
+The `tuist init` command:
+
+1. Analyzes your current project structure
+2. Prompts you for project configuration preferences
+3. Generates the necessary manifest files (`Project.swift`, `Workspace.swift`, etc.)
+4. Creates a recommended project structure
+
+## Next steps
+
+After initializing your project:
+
+<CardGroup cols={2}>
+  <Card title="Generate" icon="folder-tree" href="/cli/generate">
+    Generate an Xcode workspace from your manifests
+  </Card>
+  <Card title="Build" icon="hammer" href="/cli/build">
+    Build your project with Tuist
+  </Card>
+</CardGroup>
+
+## Related
+
+- [Project.swift reference](/cli/config/project)
+- [Tuist.swift reference](/cli/config/tuist-config)
+- [Workspace.swift reference](/cli/config/workspace)

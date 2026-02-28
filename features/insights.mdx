@@ -1,0 +1,451 @@
+---
+title: Build Insights
+description: Analyze build performance, cache efficiency, and team productivity
+---
+
+Tuist Build Insights provides deep visibility into your build performance, helping you identify bottlenecks, optimize caching, and track improvements over time.
+
+## Overview
+
+Build Insights captures detailed telemetry from every build:
+
+<CardGroup cols={3}>
+  <Card title="Build Performance" icon="gauge-high">
+    Duration, file compilation, and target metrics
+  </Card>
+  <Card title="Cache Efficiency" icon="box">
+    Hit rates, latency, and storage analysis
+  </Card>
+  <Card title="Team Trends" icon="users">
+    Productivity tracking and historical comparisons
+  </Card>
+</CardGroup>
+
+<Info>
+  All build data is automatically collected when you run `tuist build` or `tuist test` while authenticated with Tuist Cloud.
+</Info>
+
+## Key Metrics
+
+### Build Duration
+
+<Accordion title="What it measures">
+  Total time from build start to completion, including:
+  - Dependency resolution
+  - Source compilation  
+  - Linking
+  - Resource processing
+  - Cache operations
+</Accordion>
+
+**Use it to:**
+- Track build performance trends
+- Measure impact of caching improvements
+- Compare build times across branches
+- Identify performance regressions
+
+### Compilation Performance
+
+<Accordion title="What it measures">
+  Individual file and target compilation times:
+  - Swift compilation
+  - Objective-C/C compilation
+  - Per-file duration
+  - Slowest files and targets
+</Accordion>
+
+**Use it to:**
+- Find slow-compiling files
+- Optimize problematic code
+- Identify complex type inference
+- Track compilation improvements
+
+### Cache Metrics
+
+<Accordion title="What it measures">
+  Binary cache performance:
+  - Cache hit rate (local + remote)
+  - Cache read/write latency
+  - Bandwidth usage
+  - Storage efficiency
+</Accordion>
+
+**Use it to:**
+- Validate caching is working
+- Measure cache impact on build time
+- Identify cache performance issues
+- Optimize cache strategy
+
+### Build Issues
+
+<Accordion title="What it measures">
+  Warnings and errors during builds:
+  - Error types and frequency
+  - Warning signatures
+  - Affected targets
+  - Issue trends
+</Accordion>
+
+**Use it to:**
+- Track technical debt
+- Monitor warning reduction goals
+- Identify recurring problems
+- Prioritize fixes
+
+## Dashboard Views
+
+### Overview
+
+Get a high-level summary of your project's build health:
+
+```
+┌──────────────────────────────────────┐
+│ Build Performance (Last 30 days)     │
+└──────────────────────────────────────┘
+
+Avg Build Time:     3m 42s  ↓ 15%
+Cache Hit Rate:     87%     ↑ 12%
+Successful Builds:  245/250 (98%)
+Total Builds:       250
+```
+
+### Build Timeline
+
+Visualize build duration trends over time:
+
+- **Daily averages** - Spot performance changes
+- **Success/failure rates** - Track reliability  
+- **Configuration breakdown** - Debug vs Release
+- **Branch comparison** - Feature vs main
+
+### Compilation Analysis
+
+Drill into compilation performance:
+
+<Tabs>
+  <Tab title="Slowest Files">
+    | File | Target | Duration |
+    |------|--------|----------|
+    | NetworkManager.swift | Core | 8.2s |
+    | UserViewModel.swift | Features | 6.5s |
+    | APIClient.swift | Core | 5.8s |
+  </Tab>
+  
+  <Tab title="Slowest Targets">
+    | Target | Files | Duration |
+    |--------|-------|----------|
+    | Core | 142 | 45.2s |
+    | Features | 89 | 32.1s |
+    | Networking | 34 | 18.7s |
+  </Tab>
+  
+  <Tab title="File Types">
+    | Type | Count | Total Time |
+    |------|-------|------------|
+    | Swift | 315 | 2m 15s |
+    | Objective-C | 42 | 28s |
+    | C/C++ | 8 | 4s |
+  </Tab>
+</Tabs>
+
+### Cache Performance
+
+Analyze cache effectiveness:
+
+<Steps>
+  <Step title="Hit Rates">
+    - **Local hits**: Artifacts found in local cache
+    - **Remote hits**: Downloaded from Tuist Cloud  
+    - **Misses**: Required full rebuild
+    
+    ```
+    Local:  45% (↑↑↑ 242 targets)
+    Remote: 42% (↓↓  228 targets)  
+    Miss:   13% (↓    71 targets)
+    ```
+  </Step>
+  
+  <Step title="Latency">
+    Read and write performance:
+    - P50, P90, P99 latencies
+    - Cache operation duration
+    - Network bandwidth usage
+  </Step>
+  
+  <Step title="Storage">
+    Cache storage metrics:
+    - Total cache size
+    - Download/upload volumes
+    - Compression ratios
+  </Step>
+</Steps>
+
+## Build Comparison
+
+Compare builds to measure improvements:
+
+### Before/After Optimization
+
+```bash
+# Run baseline build
+tuist build
+
+# Make optimizations
+# ...
+
+# Run comparison build
+tuist build
+```
+
+View side-by-side comparison in dashboard:
+
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| Duration | 5m 23s | 2m 18s | 🚀 -57% |
+| Cache Hits | 45% | 89% | ↑ +44% |
+| Compiled Files | 315 | 34 | ↓ -89% |
+
+### Branch Comparison
+
+Compare feature branch builds against main:
+
+- Build time regression detection
+- Cache performance changes
+- New warnings introduced
+- Compilation overhead
+
+## Custom Analytics
+
+### Tags and Labels
+
+Organize builds with custom metadata:
+
+```bash
+# Tag builds by feature
+tuist build --tag feature:payments
+
+# Label by environment  
+tuist build --tag env:staging
+
+# Add custom metadata
+tuist build --custom-values ci:github run:1234
+```
+
+Filter and analyze by tags in the dashboard.
+
+### CI Provider Integration
+
+Automatic CI metadata capture:
+
+- **GitHub Actions** - Workflow, run ID, PR number
+- **GitLab CI** - Pipeline ID, job name
+- **Bitrise** - Build slug, branch
+- **CircleCI** - Build number, workflow ID
+- **Buildkite** - Build ID, agent
+- **Codemagic** - Build ID, workflow
+
+### Custom Values
+
+Track project-specific metrics:
+
+```bash
+tuist build --custom-values \
+  squad:checkout \
+  sprint:42 \
+  platform:ios
+```
+
+Query builds by custom values:
+
+```bash
+tuist insights list --custom-values squad=checkout
+```
+
+## Alerts and Notifications
+
+### Performance Degradation
+
+Get notified when builds slow down:
+
+- **Threshold alerts** - Build time exceeds X minutes
+- **Regression detection** - 20%+ slower than baseline
+- **Cache hit rate drops** - Below target percentage
+
+### Build Failures
+
+Track build reliability:
+
+- **Failure rate increases** - More than X% failures
+- **Recurring errors** - Same issue multiple times
+- **Flaky builds** - Intermittent failures
+
+### Configure Alerts
+
+Set up alerts in Tuist Cloud:
+
+1. Navigate to Project Settings > Insights
+2. Enable alert types
+3. Configure thresholds
+4. Choose notification channels (email, Slack)
+
+## API Access
+
+Query insights programmatically:
+
+```bash
+# Get recent builds
+curl -H "Authorization: Bearer $TUIST_TOKEN" \
+  https://api.tuist.io/projects/PROJECT_ID/builds
+
+# Get build details
+curl -H "Authorization: Bearer $TUIST_TOKEN" \
+  https://api.tuist.io/builds/BUILD_ID
+```
+
+Use the API to:
+- Build custom dashboards
+- Integrate with internal tools
+- Export data for analysis
+- Create custom alerts
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Establish baselines" icon="chart-line">
+    - Run builds consistently (same machine, config)
+    - Track main branch performance
+    - Measure before/after optimizations
+    - Document expected build times
+  </Accordion>
+  
+  <Accordion title="Monitor trends" icon="trending-up">
+    - Review insights weekly
+    - Watch for gradual degradation
+    - Celebrate improvements
+    - Share metrics with team
+  </Accordion>
+  
+  <Accordion title="Act on data" icon="list-check">
+    - Fix slowest compilation files
+    - Improve cache hit rates
+    - Reduce warnings over time
+    - Optimize target dependencies
+  </Accordion>
+  
+  <Accordion title="Set goals" icon="bullseye">
+    - Target build time (e.g., under 2 minutes)
+    - Cache hit rate goal (e.g., 85%+)
+    - Zero warnings policy
+    - 99%+ build success rate
+  </Accordion>
+</AccordionGroup>
+
+## Example Optimizations
+
+### Reduce Compilation Time
+
+<Steps>
+  <Step title="Identify slow files">
+    Use Build Insights to find files taking >5 seconds
+  </Step>
+  
+  <Step title="Simplify complex code">
+    - Break up large functions
+    - Add explicit types
+    - Reduce generic constraints
+    - Split complex expressions
+  </Step>
+  
+  <Step title="Measure improvement">
+    ```bash
+    tuist build
+    ```
+    
+    Compare before/after in dashboard
+  </Step>
+</Steps>
+
+### Improve Cache Hit Rate
+
+<Steps>
+  <Step title="Check cache metrics">
+    Identify targets with low hit rates
+  </Step>
+  
+  <Step title="Stabilize dependencies">
+    - Pin package versions
+    - Avoid changing shared code
+    - Use stable interfaces
+  </Step>
+  
+  <Step title="Warm cache in CI">
+    ```yaml
+    - run: tuist cache warm
+    ```
+  </Step>
+  
+  <Step title="Monitor improvement">
+    Track hit rate increase over time
+  </Step>
+</Steps>
+
+## Insights for Teams
+
+### Team Productivity
+
+Track team-wide metrics:
+
+- **Total builds per day** - Development activity
+- **Average build time** - Developer experience
+- **CI vs local builds** - Where builds happen
+- **Peak build hours** - Resource planning
+
+### Cost Analysis
+
+Understand build infrastructure costs:
+
+- **CI minutes used** - Build time × runs
+- **Cache storage** - Artifact size and retention
+- **Bandwidth** - Cache downloads/uploads
+
+### Developer Experience
+
+Measure and improve DX:
+
+- **Time to first build** - Onboarding
+- **Clean build duration** - Worst case
+- **Incremental build time** - Daily workflow
+- **Cache effectiveness** - Build speedup
+
+## Data Retention
+
+Build data is retained according to your plan:
+
+- **Free plan**: 30 days
+- **Team plan**: 90 days  
+- **Enterprise plan**: Custom retention
+
+Export data for longer-term analysis via API.
+
+## Privacy & Security
+
+<Warning>
+  Build insights contain metadata only, not source code:
+  - File paths and names
+  - Build configuration
+  - Duration metrics
+  - Error messages
+  
+  No source code is uploaded to Tuist Cloud.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Binary Caching" icon="box" href="/features/cache">
+    Optimize cache usage based on insights
+  </Card>
+  <Card title="Bundle Size Analysis" icon="chart-pie" href="/features/bundle-size">
+    Analyze your app's binary size
+  </Card>
+</CardGroup>

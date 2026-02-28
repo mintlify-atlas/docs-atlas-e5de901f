@@ -1,0 +1,493 @@
+---
+title: Installation
+description: Install Tuist on your machine using various methods
+---
+
+# Installing Tuist
+
+Tuist is a command-line tool written in Swift that runs on macOS and Linux. This guide covers all available installation methods.
+
+## System Requirements
+
+<CardGroup cols={2}>
+  <Card icon="apple" title="macOS">
+    macOS 12.0 or later for full functionality (including Xcode project generation)
+  </Card>
+  <Card icon="linux" title="Linux">
+    Ubuntu 20.04+ or other modern Linux distributions for server commands
+  </Card>
+  <Card icon="hammer" title="Xcode (macOS only)">
+    Xcode 14.0 or later with Command Line Tools installed
+  </Card>
+  <Card icon="cube" title="Swift">
+    Swift 5.9 or later (included with Xcode on macOS)
+  </Card>
+</CardGroup>
+
+<Note>
+  On Linux, commands requiring Xcode (like `tuist generate` or `tuist build`) won't work. However, commands for authentication, project management, analytics, and scaffolding work perfectly.
+</Note>
+
+## Installation Methods
+
+Choose the installation method that best fits your workflow:
+
+<Tabs>
+  <Tab title="Mise (Recommended)">
+    [Mise](https://mise.jdx.dev) is a versatile development tool version manager that handles Tuist installation and versioning.
+
+    ### Why Mise?
+
+    - **Version pinning**: Ensures all team members use the same Tuist version
+    - **Project isolation**: Different projects can use different Tuist versions
+    - **Automatic activation**: Switches to the correct version when entering a project directory
+    - **Zero configuration**: Works out of the box with `.mise.toml` files
+
+    ### Install Mise
+
+    <CodeGroup>
+
+    ```bash macOS (Homebrew)
+    brew install mise
+    ```
+
+    ```bash macOS/Linux (curl)
+    curl https://mise.run | sh
+    ```
+
+    ```bash Ubuntu/Debian
+    apt update -y && apt install -y gpg sudo wget curl
+    sudo install -dm 755 /etc/apt/keyrings
+    wget -qO - https://mise.jdx.dev/gpg-key.pub | gpg --dearmor | sudo tee /etc/apt/keyrings/mise-archive-keyring.gpg 1> /dev/null
+    echo "deb [signed-by=/etc/apt/keyrings/mise-archive-keyring.gpg arch=amd64] https://mise.jdx.dev/deb stable main" | sudo tee /etc/apt/sources.list.d/mise.list
+    sudo apt update
+    sudo apt install -y mise
+    ```
+
+    </CodeGroup>
+
+    ### Use Tuist with Mise
+
+    **Option 1: Run without installation**
+
+    ```bash
+    mise x tuist@latest -- tuist init
+    ```
+
+    **Option 2: Install in your project**
+
+    ```bash
+    cd your-project
+    mise use tuist@latest
+    ```
+
+    This creates a `.mise.toml` file:
+
+    ```toml .mise.toml
+    [tools]
+    tuist = "latest"
+    ```
+
+    **Option 3: Install globally**
+
+    ```bash
+    mise use -g tuist@latest
+    ```
+
+    ### Specify a version
+
+    ```bash Pin specific version
+    mise use tuist@4.0.0
+    ```
+
+    ```bash Pin to major version
+    mise use tuist@4
+    ```
+
+    <Tip>
+      Commit `.mise.toml` to version control so your team uses consistent Tuist versions.
+    </Tip>
+
+    ### Update Tuist
+
+    ```bash Update to latest
+    mise use tuist@latest
+    ```
+
+    ```bash Update and regenerate lockfile
+    mise install
+    ```
+  </Tab>
+
+  <Tab title="Direct Download">
+    Download the Tuist binary directly from GitHub releases.
+
+    ### Download and install
+
+    ```bash Download latest release
+    curl -Ls https://install.tuist.io | bash
+    ```
+
+    This script:
+    - Downloads the latest Tuist release
+    - Installs it to `/usr/local/bin/tuist`
+    - Makes it available globally
+
+    ### Verify installation
+
+    ```bash
+    tuist --version
+    ```
+
+    ### Manual installation
+
+    If you prefer manual installation:
+
+    1. Go to [Tuist Releases](https://github.com/tuist/tuist/releases)
+    2. Download the latest `tuist.zip`
+    3. Extract and move to your PATH:
+
+    ```bash
+    unzip tuist.zip
+    mv tuist /usr/local/bin/
+    chmod +x /usr/local/bin/tuist
+    ```
+
+    ### Update
+
+    Re-run the installation command to update to the latest version:
+
+    ```bash
+    curl -Ls https://install.tuist.io | bash
+    ```
+
+    <Warning>
+      Direct installation doesn't provide version management. For version pinning, use Mise instead.
+    </Warning>
+  </Tab>
+
+  <Tab title="Build from Source">
+    Build Tuist from source for development or to use unreleased features.
+
+    ### Prerequisites
+
+    - Xcode 14.0 or later (macOS)
+    - Swift 5.9 or later (Linux)
+    - Git
+
+    ### Clone and build
+
+    ```bash Clone repository
+    git clone https://github.com/tuist/tuist.git
+    cd tuist
+    ```
+
+    ```bash Build for macOS
+    mise run cli:build:release
+    ```
+
+    ```bash Build for Linux
+    swift build -c release
+    ```
+
+    ### Install locally
+
+    ```bash
+    cp .build/release/tuist /usr/local/bin/
+    ```
+
+    ### Development workflow
+
+    For development, use the generated Xcode project:
+
+    ```bash
+    mise run cli:generate
+    ```
+
+    This opens `Tuist.xcworkspace` where you can develop and debug.
+
+    ### Run tests
+
+    ```bash Run all tests
+    mise run cli:test
+    ```
+
+    ```bash Run specific tests
+    mise run cli:test --filter MyTests
+    ```
+
+    <Note>
+      Building from source is primarily for contributors. For regular use, prefer Mise or direct download.
+    </Note>
+  </Tab>
+
+  <Tab title="Docker">
+    Use Tuist in Docker containers for CI/CD or isolated environments.
+
+    ### Official Docker image
+
+    Tuist provides official Docker images on [GitHub Container Registry](https://github.com/tuist/tuist/pkgs/container/tuist).
+
+    ```dockerfile Dockerfile
+    FROM ghcr.io/tuist/tuist:latest
+
+    WORKDIR /app
+    COPY . .
+
+    RUN tuist generate
+    ```
+
+    ### Available tags
+
+    - `latest`: Latest stable release
+    - `4`: Latest 4.x version
+    - `4.0.0`: Specific version
+
+    ### Use in CI
+
+    <CodeGroup>
+
+    ```yaml GitHub Actions
+    name: Build
+    on: [push]
+
+    jobs:
+      build:
+        runs-on: macos-latest
+        container:
+          image: ghcr.io/tuist/tuist:latest
+        steps:
+          - uses: actions/checkout@v4
+          - name: Generate project
+            run: tuist generate
+          - name: Build
+            run: tuist build
+    ```
+
+    ```yaml GitLab CI
+    image: ghcr.io/tuist/tuist:latest
+
+    build:
+      script:
+        - tuist generate
+        - tuist build
+    ```
+
+    </CodeGroup>
+
+    <Warning>
+      Docker images for Tuist are Linux-based. Xcode-specific commands won't work. Use macOS runners with Mise for full functionality.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## Verify Installation
+
+After installation, verify Tuist is working correctly:
+
+```bash Check version
+tuist --version
+```
+
+```bash Check help
+tuist --help
+```
+
+You should see output showing the Tuist version and available commands.
+
+## Shell Completion
+
+Enable shell completion for a better command-line experience:
+
+<Tabs>
+  <Tab title="Bash">
+    ```bash
+    tuist --generate-completion-script bash > /usr/local/etc/bash_completion.d/tuist
+    ```
+  </Tab>
+  <Tab title="Zsh">
+    ```bash
+    tuist --generate-completion-script zsh > /usr/local/share/zsh/site-functions/_tuist
+    ```
+  </Tab>
+  <Tab title="Fish">
+    ```bash
+    tuist --generate-completion-script fish > ~/.config/fish/completions/tuist.fish
+    ```
+  </Tab>
+</Tabs>
+
+Restart your shell for completions to take effect.
+
+## Authentication
+
+Many Tuist features require authentication with Tuist Cloud:
+
+```bash Login to Tuist Cloud
+tuist auth login
+```
+
+This opens your browser to authenticate. Once logged in, you can:
+
+- Use the cache
+- Share app previews
+- Access build insights
+- Manage projects and organizations
+
+```bash Check authentication status
+tuist auth whoami
+```
+
+<Card title="Cloud Services" icon="cloud" href="/cloud/introduction">
+  Learn more about Tuist Cloud features and pricing
+</Card>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Command not found: tuist">
+    The `tuist` binary isn't in your PATH. Solutions:
+
+    **Using Mise:**
+    ```bash
+    mise doctor
+    mise reshim
+    ```
+
+    **Direct installation:**
+    ```bash
+    echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.zshrc
+    source ~/.zshrc
+    ```
+  </Accordion>
+
+  <Accordion title="Permission denied">
+    The binary doesn't have execute permissions:
+
+    ```bash
+    chmod +x /usr/local/bin/tuist
+    ```
+  </Accordion>
+
+  <Accordion title="Version mismatch in team">
+    Different team members are using different Tuist versions.
+
+    **Solution:** Use Mise with version pinning:
+
+    1. Create `.mise.toml` in your project root:
+       ```toml
+       [tools]
+       tuist = "4.0.0"
+       ```
+
+    2. Commit this file to version control
+
+    3. Team members run:
+       ```bash
+       mise install
+       ```
+  </Accordion>
+
+  <Accordion title="macOS Gatekeeper warning">
+    macOS may block the binary because it's downloaded from the internet.
+
+    ```bash
+    xattr -d com.apple.quarantine /usr/local/bin/tuist
+    ```
+
+    Or allow it in System Preferences → Security & Privacy.
+  </Accordion>
+
+  <Accordion title="Xcode Command Line Tools missing">
+    Some features require Xcode Command Line Tools:
+
+    ```bash
+    xcode-select --install
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Update Tuist
+
+Keep Tuist up to date for the latest features and fixes:
+
+<Tabs>
+  <Tab title="Mise">
+    ```bash Update to latest
+    mise use tuist@latest
+    mise install
+    ```
+
+    ```bash Update to specific version
+    mise use tuist@4.1.0
+    mise install
+    ```
+  </Tab>
+  <Tab title="Direct Download">
+    ```bash Re-run installer
+    curl -Ls https://install.tuist.io | bash
+    ```
+  </Tab>
+  <Tab title="From Source">
+    ```bash
+    cd tuist
+    git pull
+    mise run cli:build:release
+    cp .build/release/tuist /usr/local/bin/
+    ```
+  </Tab>
+</Tabs>
+
+## Uninstall Tuist
+
+If you need to uninstall Tuist:
+
+<Tabs>
+  <Tab title="Mise">
+    ```bash Remove from project
+    mise uninstall tuist
+    ```
+
+    ```bash Remove globally
+    mise uninstall -g tuist
+    ```
+  </Tab>
+  <Tab title="Direct Installation">
+    ```bash
+    rm /usr/local/bin/tuist
+    ```
+  </Tab>
+</Tabs>
+
+## Next Steps
+
+Now that Tuist is installed:
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Create your first project with Tuist
+  </Card>
+  <Card title="CLI Reference" icon="terminal" href="/cli/init">
+    Explore available commands
+  </Card>
+  <Card title="Core Concepts" icon="book" href="/concepts/architecture">
+    Learn about Tuist's architecture
+  </Card>
+  <Card title="Cloud Setup" icon="cloud" href="/cloud/authentication">
+    Set up authentication for cloud features
+  </Card>
+</CardGroup>
+
+## Additional Resources
+
+<CardGroup cols={3}>
+  <Card title="Changelog" icon="list" href="https://github.com/tuist/tuist/releases">
+    See what's new in each release
+  </Card>
+  <Card title="Contributing" icon="code-pull-request" href="https://docs.tuist.dev/contributors/get-started">
+    Contribute to Tuist development
+  </Card>
+  <Card title="GitHub" icon="github" href="https://github.com/tuist/tuist">
+    Star us on GitHub
+  </Card>
+</CardGroup>

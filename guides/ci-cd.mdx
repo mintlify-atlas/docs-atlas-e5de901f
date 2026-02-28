@@ -1,0 +1,732 @@
+---
+title: 'CI/CD Integration'
+description: 'Configure continuous integration and deployment for Tuist projects'
+icon: 'rotate'
+---
+
+## Overview
+
+Continuous Integration (CI) and Continuous Deployment (CD) are essential for maintaining code quality and automating releases. This guide covers setting up CI/CD pipelines optimized for Tuist projects.
+
+## Understanding CI/CD with Tuist
+
+Tuist projects have specific requirements in CI:
+
+- **Deterministic project generation**: `tuist generate` produces consistent projects
+- **Dependency resolution**: `tuist install` must run before generation
+- **Binary caching**: Significantly speeds up CI builds
+- **Selective testing**: Reduces test execution time
+
+<Tip>
+Tuist's deterministic project generation means you don't commit `.xcodeproj` files. CI generates them fresh on every run.
+</Tip>
+
+## GitHub Actions
+
+GitHub Actions is a popular choice for iOS CI/CD.
+
+### Basic Build Workflow
+
+```yaml .github/workflows/build.yml
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  TUIST_ENABLE_CACHING: true
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: macos-14
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Select Xcode version
+        run: sudo xcode-select -switch /Applications/Xcode_15.2.app
+      
+      - name: Install Tuist
+        run: curl -Ls https://install.tuist.io | bash
+      
+      - name: Authenticate with Tuist
+        run: tuist auth --token ${{ secrets.TUIST_TOKEN }}
+      
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: Tuist/Dependencies
+          key: deps-${{ hashFiles('Tuist/Package.resolved') }}
+          restore-keys: deps-
+      
+      - name: Install dependencies
+        run: tuist install --force-resolved-versions
+      
+      - name: Generate project
+        run: tuist generate
+      
+      - name: Build
+        run: |
+          xcodebuild build \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            -quiet
+      
+      - name: Test
+        run: |
+          xcodebuild test \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            -quiet
+```
+
+### Optimized Workflow with Caching
+
+```yaml .github/workflows/optimized-build.yml
+name: Optimized Build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  TUIST_ENABLE_CACHING: ${{ github.event.pull_request.head.repo.fork != true }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  build-and-test:
+    runs-on: macos-14
+    timeout-minutes: 30
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Select Xcode
+        run: sudo xcode-select -switch /Applications/Xcode_15.2.app
+      
+      - name: Install Tuist
+        run: |
+          curl -Ls https://install.tuist.io | bash
+          tuist --version
+      
+      - name: Authenticate with Tuist (team members only)
+        if: env.TUIST_ENABLE_CACHING == 'true'
+        run: tuist auth --token ${{ secrets.TUIST_TOKEN }}
+      
+      - name: Restore dependency cache
+        id: deps-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            Tuist/Dependencies
+            ~/Library/Caches/tuist
+          key: deps-${{ runner.os }}-${{ hashFiles('Tuist/Package.resolved') }}
+          restore-keys: |
+            deps-${{ runner.os }}-
+      
+      - name: Install dependencies
+        run: tuist install --force-resolved-versions
+      
+      - name: Generate project
+        run: tuist generate
+      
+      - name: Restore build cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: build-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            build-${{ runner.os }}-
+      
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            -derivedDataPath ~/Library/Developer/Xcode/DerivedData \
+            | xcbeautify
+      
+      - name: Run tests with selective testing
+        if: env.TUIST_ENABLE_CACHING == 'true'
+        run: tuist test --selective
+      
+      - name: Run all tests (forks)
+        if: env.TUIST_ENABLE_CACHING != 'true'
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            | xcbeautify
+      
+      - name: Save build cache
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: build-${{ runner.os }}-${{ github.sha }}
+```
+
+<Warning>
+Disable caching for fork PRs to prevent unauthorized access to your cache. The example above shows how to detect forks.
+</Warning>
+
+### Cache Warming Workflow
+
+Warm the cache on the main branch to speed up PR builds:
+
+```yaml .github/workflows/cache-warm.yml
+name: Warm Cache
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM
+
+env:
+  TUIST_ENABLE_CACHING: true
+
+jobs:
+  warm-cache:
+    runs-on: macos-14
+    timeout-minutes: 45
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Select Xcode
+        run: sudo xcode-select -switch /Applications/Xcode_15.2.app
+      
+      - name: Install Tuist
+        run: curl -Ls https://install.tuist.io | bash
+      
+      - name: Authenticate with Tuist
+        run: tuist auth --token ${{ secrets.TUIST_TOKEN }}
+      
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: Tuist/Dependencies
+          key: deps-${{ hashFiles('Tuist/Package.resolved') }}
+      
+      - name: Install dependencies
+        run: tuist install --force-resolved-versions
+      
+      - name: Warm cache
+        run: tuist cache warm
+```
+
+### Release Workflow
+
+```yaml .github/workflows/release.yml
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  TUIST_ENABLE_CACHING: true
+
+jobs:
+  release:
+    runs-on: macos-14
+    timeout-minutes: 60
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Select Xcode
+        run: sudo xcode-select -switch /Applications/Xcode_15.2.app
+      
+      - name: Install Tuist
+        run: curl -Ls https://install.tuist.io | bash
+      
+      - name: Authenticate with Tuist
+        run: tuist auth --token ${{ secrets.TUIST_TOKEN }}
+      
+      - name: Install dependencies
+        run: tuist install --force-resolved-versions
+      
+      - name: Generate project (static linking)
+        run: LINKING=static tuist generate
+      
+      - name: Build for release
+        run: |
+          xcodebuild archive \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -archivePath ${{ runner.temp }}/App.xcarchive \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGN_IDENTITY="${{ secrets.CERTIFICATE_NAME }}" \
+            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.PROVISIONING_PROFILE }}"
+      
+      - name: Export IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath ${{ runner.temp }}/App.xcarchive \
+            -exportPath ${{ runner.temp }}/export \
+            -exportOptionsPlist ExportOptions.plist
+      
+      - name: Upload to App Store Connect
+        env:
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+        run: |
+          xcrun altool --upload-app \
+            --type ios \
+            --file ${{ runner.temp }}/export/App.ipa \
+            --apiKey $APP_STORE_CONNECT_API_KEY
+```
+
+## GitLab CI
+
+### Basic Pipeline
+
+```yaml .gitlab-ci.yml
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  TUIST_ENABLE_CACHING: "true"
+  XCODE_VERSION: "15.2"
+
+build:
+  stage: build
+  tags:
+    - macos
+  script:
+    - sudo xcode-select -switch /Applications/Xcode_$XCODE_VERSION.app
+    - curl -Ls https://install.tuist.io | bash
+    - tuist auth --token $TUIST_TOKEN
+    - tuist install --force-resolved-versions
+    - tuist generate
+    - xcodebuild build -workspace App.xcworkspace -scheme App -destination 'platform=iOS Simulator,name=iPhone 15'
+  cache:
+    key: deps-$CI_COMMIT_REF_SLUG
+    paths:
+      - Tuist/Dependencies/
+      - ~/Library/Caches/tuist/
+
+test:
+  stage: test
+  tags:
+    - macos
+  dependencies:
+    - build
+  script:
+    - tuist test --selective
+  cache:
+    key: deps-$CI_COMMIT_REF_SLUG
+    paths:
+      - Tuist/Dependencies/
+    policy: pull
+```
+
+## Bitrise
+
+### bitrise.yml Configuration
+
+```yaml bitrise.yml
+format_version: '11'
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+
+workflows:
+  primary:
+    steps:
+      - activate-ssh-key:
+          run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+      
+      - git-clone: {}
+      
+      - script:
+          title: Install Tuist
+          inputs:
+            - content: |
+                #!/bin/bash
+                set -ex
+                curl -Ls https://install.tuist.io | bash
+      
+      - script:
+          title: Authenticate with Tuist
+          inputs:
+            - content: |
+                #!/bin/bash
+                set -ex
+                tuist auth --token "$TUIST_TOKEN"
+      
+      - cache-pull: {}
+      
+      - script:
+          title: Install dependencies
+          inputs:
+            - content: |
+                #!/bin/bash
+                set -ex
+                tuist install --force-resolved-versions
+      
+      - script:
+          title: Generate project
+          inputs:
+            - content: |
+                #!/bin/bash
+                set -ex
+                tuist generate
+      
+      - xcode-build:
+          inputs:
+            - project_path: App.xcworkspace
+            - scheme: App
+            - configuration: Debug
+      
+      - xcode-test:
+          inputs:
+            - project_path: App.xcworkspace
+            - scheme: App
+      
+      - cache-push:
+          inputs:
+            - cache_paths: |
+                Tuist/Dependencies
+                ~/Library/Caches/tuist
+```
+
+## CircleCI
+
+### config.yml
+
+```yaml .circleci/config.yml
+version: 2.1
+
+orbs:
+  macos: circleci/macos@2
+
+jobs:
+  build-and-test:
+    macos:
+      xcode: 15.2.0
+    environment:
+      TUIST_ENABLE_CACHING: "true"
+    steps:
+      - checkout
+      
+      - run:
+          name: Install Tuist
+          command: curl -Ls https://install.tuist.io | bash
+      
+      - run:
+          name: Authenticate with Tuist
+          command: tuist auth --token $TUIST_TOKEN
+      
+      - restore_cache:
+          keys:
+            - deps-v1-{{ checksum "Tuist/Package.resolved" }}
+            - deps-v1-
+      
+      - run:
+          name: Install dependencies
+          command: tuist install --force-resolved-versions
+      
+      - save_cache:
+          key: deps-v1-{{ checksum "Tuist/Package.resolved" }}
+          paths:
+            - Tuist/Dependencies
+            - ~/Library/Caches/tuist
+      
+      - run:
+          name: Generate project
+          command: tuist generate
+      
+      - run:
+          name: Build
+          command: |
+            xcodebuild build \
+              -workspace App.xcworkspace \
+              -scheme App \
+              -destination 'platform=iOS Simulator,name=iPhone 15'
+      
+      - run:
+          name: Test
+          command: tuist test --selective
+
+workflows:
+  build-test:
+    jobs:
+      - build-and-test
+```
+
+## Best Practices
+
+### Use Force Resolved Versions
+
+Always use `--force-resolved-versions` on CI:
+
+```bash
+tuist install --force-resolved-versions
+```
+
+This ensures deterministic builds by using exact versions from `Package.resolved`.
+
+### Cache Dependencies Effectively
+
+Cache both dependencies and Tuist's cache:
+
+```yaml
+- uses: actions/cache@v4
+  with:
+    path: |
+      Tuist/Dependencies
+      ~/Library/Caches/tuist
+    key: deps-${{ hashFiles('Tuist/Package.resolved') }}
+```
+
+### Enable Caching for Team Members Only
+
+Prevent forks from accessing your cache:
+
+```yaml
+env:
+  TUIST_ENABLE_CACHING: ${{ github.event.pull_request.head.repo.fork != true }}
+```
+
+### Set Appropriate Timeouts
+
+Prevent jobs from hanging:
+
+```yaml
+jobs:
+  build:
+    timeout-minutes: 30  # Adjust based on your project
+```
+
+### Use Selective Testing
+
+Run only affected tests:
+
+```bash
+tuist test --selective
+```
+
+<Tip>
+Selective testing can reduce test time by 10-20x on large projects.
+</Tip>
+
+### Warm Cache on Main Branch
+
+Ensure PR builds have warm cache:
+
+```yaml
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM
+```
+
+### Use Static Linking for Release Builds
+
+Optimize release builds:
+
+```bash
+LINKING=static tuist generate
+```
+
+## Troubleshooting
+
+### Build Fails with "No such file or directory"
+
+**Cause**: Project not generated before building
+
+**Solution**: Ensure `tuist generate` runs before `xcodebuild`:
+
+```yaml
+- run: tuist generate
+- run: xcodebuild build ...
+```
+
+### Dependencies Not Found
+
+**Cause**: Dependencies not installed
+
+**Solution**: Run `tuist install` before generation:
+
+```yaml
+- run: tuist install --force-resolved-versions
+- run: tuist generate
+```
+
+### Cache Not Working
+
+**Cause**: Authentication failure or caching disabled
+
+**Solutions**:
+
+1. Verify authentication:
+   ```bash
+   tuist auth --token $TUIST_TOKEN
+   ```
+
+2. Enable caching in Tuist.swift:
+   ```swift
+   enableCaching: true
+   ```
+
+3. Check environment variable:
+   ```yaml
+   env:
+     TUIST_ENABLE_CACHING: "true"
+   ```
+
+### Slow Dependency Resolution
+
+**Cause**: Not using resolved versions
+
+**Solution**: Always use `--force-resolved-versions`:
+
+```bash
+tuist install --force-resolved-versions
+```
+
+### Tests Timing Out
+
+**Cause**: Running full test suite
+
+**Solution**: Use selective testing:
+
+```bash
+tuist test --selective
+```
+
+### Code Signing Failures
+
+**Cause**: Missing certificates or provisioning profiles
+
+**Solutions**:
+
+1. Use Fastlane Match for certificate management
+2. Store certificates in CI secrets
+3. Import certificates before building:
+   ```yaml
+   - name: Import certificates
+     run: |
+       security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+       security import certificate.p12 -k build.keychain -P "$CERT_PASSWORD"
+   ```
+
+## Continuous Deployment
+
+### App Store Deployment with Fastlane
+
+```ruby Fastfile
+default_platform(:ios)
+
+platform :ios do
+  desc "Deploy to App Store"
+  lane :deploy do
+    # Authenticate with Tuist
+    sh("tuist auth --token #{ENV['TUIST_TOKEN']}")
+    
+    # Install dependencies
+    sh("tuist install --force-resolved-versions")
+    
+    # Generate project with static linking
+    sh("LINKING=static tuist generate")
+    
+    # Build and archive
+    build_app(
+      workspace: "App.xcworkspace",
+      scheme: "App",
+      configuration: "Release",
+      export_method: "app-store"
+    )
+    
+    # Upload to App Store Connect
+    upload_to_app_store(
+      skip_metadata: true,
+      skip_screenshots: true
+    )
+  end
+end
+```
+
+### TestFlight Deployment
+
+```ruby Fastfile
+lane :beta do
+  sh("tuist auth --token #{ENV['TUIST_TOKEN']}")
+  sh("tuist install --force-resolved-versions")
+  sh("LINKING=static tuist generate")
+  
+  build_app(
+    workspace: "App.xcworkspace",
+    scheme: "App",
+    configuration: "Release"
+  )
+  
+  upload_to_testflight(
+    skip_waiting_for_build_processing: true
+  )
+end
+```
+
+## Monitoring CI Performance
+
+### Track Build Times
+
+Add timing to your CI:
+
+```yaml
+- name: Build with timing
+  run: |
+    start_time=$(date +%s)
+    xcodebuild build -workspace App.xcworkspace -scheme App
+    end_time=$(date +%s)
+    echo "Build time: $((end_time - start_time))s"
+```
+
+### Set Performance Goals
+
+- **PR builds**: < 10 minutes
+- **Main branch builds**: < 15 minutes  
+- **Release builds**: < 30 minutes
+
+<Warning>
+If CI times exceed these goals, investigate caching, selective testing, and modularization.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Build Optimization" icon="bolt" href="/guides/build-optimization">
+  Speed up CI builds with caching and optimization
+</Card>
+
+<Card title="Project Structure" icon="sitemap" href="/guides/project-structure">
+  Structure projects for efficient CI builds
+</Card>
+
+<Card title="Manage Dependencies" icon="box" href="/guides/dependencies">
+  Optimize dependency management for CI
+</Card>
+
+<Card title="Migrate from Xcode" icon="arrow-right-arrow-left" href="/guides/migrate-from-xcode">
+  Migrate your project to unlock CI benefits
+</Card>
+
+</CardGroup>

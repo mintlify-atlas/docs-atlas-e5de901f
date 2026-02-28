@@ -1,0 +1,275 @@
+---
+title: "Tuist.swift (Config)"
+description: "Global configuration manifest for Tuist projects"
+---
+
+## Overview
+
+`Tuist.swift` (also known as `Config.swift`) is the global configuration manifest for Tuist. It defines project-wide settings, cache configuration, server URL, and other options that apply across all projects in your repository.
+
+## Location
+
+Tuist traverses up the directory hierarchy to find `Tuist.swift`. It's typically placed at the root of your repository:
+
+```
+/Tuist.swift           # Configuration manifest
+/Workspace.swift       # Optional workspace definition
+/App/Project.swift     # Project manifest
+/Framework/Project.swift
+```
+
+This way, all projects in subdirectories share the same configuration.
+
+## Basic structure
+
+```swift
+import ProjectDescription
+
+let config = Config(
+    fullHandle: "my-org/my-project",
+    url: "https://tuist.dev",
+    cache: .cache(upload: true),
+    project: .tuist(
+        compatibleXcodeVersions: .all,
+        swiftVersion: "6.0",
+        plugins: [],
+        generationOptions: .options(),
+        installOptions: .options()
+    )
+)
+```
+
+<Note>
+`Config` is a type alias for `Tuist`.
+</Note>
+
+## Properties
+
+### fullHandle
+
+<ParamField path="fullHandle" type="String?" default="nil">
+  The full project handle such as `tuist-org/tuist`. Used to identify your project when connecting to Tuist's servers for caching, previews, and analytics.
+</ParamField>
+
+### url
+
+<ParamField path="url" type="String" default="https://tuist.dev">
+  The base URL that points to the Tuist server. Use this to point to a self-hosted Tuist server if needed.
+</ParamField>
+
+### cache
+
+<ParamField path="cache" type="Cache" default=".cache()">
+  Configures Xcode cache behavior.
+</ParamField>
+
+### inspectOptions
+
+<ParamField path="inspectOptions" type="InspectOptions" default=".options()">
+  Options to use when running `tuist inspect`.
+</ParamField>
+
+### project
+
+<ParamField path="project" type="TuistProject" required>
+  Configures the project Tuist will interact with. When no project is provided, Tuist defaults to the workspace or project in the current directory.
+</ParamField>
+
+## Cache configuration
+
+```swift
+let config = Config(
+    cache: .cache(upload: true)
+)
+```
+
+### Cache options
+
+<ParamField path="upload" type="Bool" default="true">
+  When `true`, the local proxy uploads artifacts to the remote cache. Set to `false` for read-only mode (downloads only, no uploads).
+</ParamField>
+
+## Project configuration
+
+The `project` parameter accepts a `TuistProject` value that configures various project-level settings:
+
+```swift
+let config = Config(
+    project: .tuist(
+        compatibleXcodeVersions: .list(["15.0", "15.1"]),
+        swiftVersion: "6.0",
+        plugins: [
+            .git(url: "https://github.com/my-org/my-plugin", tag: "1.0.0")
+        ],
+        generationOptions: .options(
+            resolveDependenciesWithSystemScm: false,
+            disablePackageVersionLocking: false
+        ),
+        installOptions: .options(
+            passthroughSwiftPackageManagerArguments: []
+        )
+    )
+)
+```
+
+### Compatible Xcode versions
+
+<ParamField path="compatibleXcodeVersions" type="CompatibleXcodeVersions" default=".all">
+  List of Xcode versions the project is compatible with. Options:
+  - `.all` - Any Xcode version
+  - `.list([String])` - Specific versions
+  - `.min(String)` - Minimum version
+  - `.exact(String)` - Exact version only
+</ParamField>
+
+### Swift version
+
+<ParamField path="swiftVersion" type="Version?" default="nil">
+  The version of Swift that will be used by Tuist. When nil, uses the Swift version from the selected Xcode.
+</ParamField>
+
+### Plugins
+
+<ParamField path="plugins" type="[PluginLocation]" default="[]">
+  A list of plugins to extend Tuist functionality. Plugins can be loaded from:
+  - Git repositories
+  - Local paths
+  - Swift Package Manager
+</ParamField>
+
+### Generation options
+
+<ParamField path="generationOptions" type="GenerationOptions" default=".options()">
+  Options to control project generation behavior:
+  - `resolveDependenciesWithSystemScm`: Use system SCM for dependencies
+  - `disablePackageVersionLocking`: Disable SPM package version locking
+  - `additionalPackageResolutionArguments`: Extra arguments for package resolution
+</ParamField>
+
+### Install options
+
+<ParamField path="installOptions" type="InstallOptions" default=".options()">
+  Options for the `tuist install` command:
+  - `passthroughSwiftPackageManagerArguments`: Arguments to pass through to Swift Package Manager
+</ParamField>
+
+## Examples
+
+### Minimal configuration
+
+```swift
+import ProjectDescription
+
+let config = Config(
+    fullHandle: "my-org/my-project"
+)
+```
+
+### With custom server URL
+
+```swift
+import ProjectDescription
+
+let config = Config(
+    fullHandle: "my-org/my-project",
+    url: "https://tuist.mycompany.com"
+)
+```
+
+### Read-only cache
+
+```swift
+import ProjectDescription
+
+let config = Config(
+    fullHandle: "my-org/my-project",
+    cache: .cache(upload: false)  // Download only, no uploads
+)
+```
+
+### With Xcode version constraints
+
+```swift
+import ProjectDescription
+
+let config = Config(
+    fullHandle: "my-org/my-project",
+    project: .tuist(
+        compatibleXcodeVersions: .list(["15.0", "15.1", "15.2"]),
+        swiftVersion: "6.0"
+    )
+)
+```
+
+### With plugins
+
+```swift
+import ProjectDescription
+
+let config = Config(
+    fullHandle: "my-org/my-project",
+    project: .tuist(
+        plugins: [
+            .git(
+                url: "https://github.com/my-org/tuist-plugin",
+                tag: "1.0.0"
+            ),
+            .local(path: "./Plugins/MyPlugin")
+        ]
+    )
+)
+```
+
+### Full configuration
+
+```swift
+import ProjectDescription
+
+let config = Config(
+    fullHandle: "my-org/my-project",
+    inspectOptions: .options(),
+    cache: .cache(upload: true),
+    url: "https://tuist.dev",
+    project: .tuist(
+        compatibleXcodeVersions: .min("15.0"),
+        swiftVersion: "6.0",
+        plugins: [
+            .git(
+                url: "https://github.com/tuist/tuist-plugin-lint",
+                tag: "1.0.0"
+            )
+        ],
+        generationOptions: .options(
+            resolveDependenciesWithSystemScm: false,
+            disablePackageVersionLocking: false,
+            additionalPackageResolutionArguments: ["--verbose"]
+        ),
+        installOptions: .options(
+            passthroughSwiftPackageManagerArguments: ["--allow-writing-to-package-directory"]
+        )
+    )
+)
+```
+
+## Best practices
+
+<CardGroup cols={2}>
+  <Card title="Single config file" icon="file">
+    Keep one `Tuist.swift` at your repository root to ensure consistent behavior across all projects.
+  </Card>
+  <Card title="Version control" icon="git">
+    Commit `Tuist.swift` to version control so all team members share the same configuration.
+  </Card>
+  <Card title="Team caching" icon="users">
+    Set `cache: .cache(upload: true)` to enable cache sharing across your team.
+  </Card>
+  <Card title="Xcode constraints" icon="hammer">
+    Use `compatibleXcodeVersions` to ensure team members use compatible Xcode versions.
+  </Card>
+</CardGroup>
+
+## Related
+
+- [Project.swift reference](/cli/config/project)
+- [Workspace.swift reference](/cli/config/workspace)
+- [Cache command](/cli/cache)

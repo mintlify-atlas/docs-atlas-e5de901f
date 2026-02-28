@@ -1,0 +1,400 @@
+---
+title: "Project.swift"
+description: "Project manifest for defining targets, schemes, and settings"
+---
+
+## Overview
+
+`Project.swift` is the manifest file that defines an Xcode project in Tuist. It specifies the project's name, targets, schemes, settings, and dependencies using a declarative Swift DSL.
+
+## Location
+
+Each `Project.swift` file should be placed in the directory where you want to generate the Xcode project:
+
+```
+/MyApp/Project.swift       # Generates MyApp.xcodeproj
+/MyFramework/Project.swift # Generates MyFramework.xcodeproj
+```
+
+## Basic structure
+
+```swift
+import ProjectDescription
+
+let project = Project(
+    name: "MyApp",
+    targets: [
+        .target(
+            name: "MyApp",
+            destinations: .iOS,
+            product: .app,
+            bundleId: "dev.tuist.MyApp",
+            infoPlist: .default,
+            sources: ["Sources/**"],
+            dependencies: []
+        )
+    ]
+)
+```
+
+## Properties
+
+### name
+
+<ParamField path="name" type="String" required>
+  The name of the project. Also used as the file name of the generated Xcode project (e.g., `MyApp.xcodeproj`).
+</ParamField>
+
+### organizationName
+
+<ParamField path="organizationName" type="String?" default="nil">
+  The name of the organization used by Xcode as copyright information in file headers.
+</ParamField>
+
+### classPrefix
+
+<ParamField path="classPrefix" type="String?" default="nil">
+  The prefix for class files Xcode generates when you create a project or class file.
+</ParamField>
+
+### options
+
+<ParamField path="options" type="Options" default=".options()">
+  Project-level options such as automatic schemes generation, text settings, and development region.
+</ParamField>
+
+### packages
+
+<ParamField path="packages" type="[Package]" default="[]">
+  Swift Packages used by the project. Specify remote or local packages as dependencies.
+</ParamField>
+
+### targets
+
+<ParamField path="targets" type="[Target]" required>
+  The targets of the project. Each target represents an app, framework, library, or test bundle.
+</ParamField>
+
+### schemes
+
+<ParamField path="schemes" type="[Scheme]" default="[]">
+  Custom schemes for the project. Default schemes for each target are generated automatically unless disabled in options.
+</ParamField>
+
+### settings
+
+<ParamField path="settings" type="Settings?" default="nil">
+  The build settings and configuration for the project. When nil, uses Xcode defaults.
+</ParamField>
+
+### fileHeaderTemplate
+
+<ParamField path="fileHeaderTemplate" type="FileHeaderTemplate?" default="nil">
+  The custom file header template for Xcode built-in file templates.
+</ParamField>
+
+### additionalFiles
+
+<ParamField path="additionalFiles" type="[FileElement]" default="[]">
+  Additional files to include in the project (e.g., documentation, configuration files) that aren't part of any target.
+</ParamField>
+
+### resourceSynthesizers
+
+<ParamField path="resourceSynthesizers" type="[ResourceSynthesizer]" default=".default">
+  Resource synthesizers that generate type-safe accessors for resources like images, strings, and fonts.
+</ParamField>
+
+## Defining targets
+
+Targets are the building blocks of your project. Each target produces a single product:
+
+```swift
+.target(
+    name: "App",
+    destinations: .iOS,
+    product: .app,
+    bundleId: "dev.tuist.App",
+    infoPlist: "Config/App-Info.plist",
+    sources: ["Sources/**"],
+    resources: [
+        "Resources/**",
+        .folderReference(path: "Stubs")
+    ],
+    dependencies: [
+        .target(name: "Framework"),
+        .project(target: "SharedKit", path: "../SharedKit"),
+        .external(name: "Alamofire")
+    ]
+)
+```
+
+### Target properties
+
+- **name**: The target's name
+- **destinations**: Platforms the target supports (.iOS, .macOS, .tvOS, .visionOS, .watchOS)
+- **product**: The product type (.app, .framework, .staticLibrary, etc.)
+- **bundleId**: The bundle identifier
+- **infoPlist**: Info.plist configuration
+- **sources**: Source file patterns
+- **resources**: Resource file patterns
+- **dependencies**: Dependencies on other targets, projects, or packages
+
+## Schemes
+
+Schemes define how to build, run, test, and archive your targets:
+
+```swift
+Scheme(
+    name: "App-Debug",
+    shared: true,
+    buildAction: .buildAction(targets: ["App"]),
+    testAction: .targets(["AppTests"]),
+    runAction: .runAction(
+        executable: "App",
+        arguments: .arguments(
+            launchArguments: [
+                .launchArgument(name: "-UITestingEnabled", isEnabled: true)
+            ]
+        )
+    )
+)
+```
+
+## Dependencies
+
+### Target dependencies
+
+```swift
+.target(name: "Framework")
+```
+
+### Project dependencies
+
+```swift
+.project(target: "SharedKit", path: "../SharedKit")
+```
+
+### External dependencies (Swift Packages)
+
+```swift
+.external(name: "Alamofire")
+```
+
+### SDK dependencies
+
+```swift
+.sdk(name: "CloudKit", type: .framework, status: .required)
+```
+
+## Settings
+
+Define build settings at the project level:
+
+```swift
+let project = Project(
+    name: "MyApp",
+    settings: .settings(
+        base: [
+            "DEVELOPMENT_TEAM": "ABC123",
+            "CODE_SIGN_STYLE": "Manual"
+        ],
+        configurations: [
+            .debug(name: "Debug"),
+            .release(name: "Release")
+        ]
+    ),
+    targets: [...]
+)
+```
+
+## Swift Packages
+
+Include Swift Packages in your project:
+
+```swift
+let project = Project(
+    name: "MyApp",
+    packages: [
+        .remote(
+            url: "https://github.com/Alamofire/Alamofire",
+            requirement: .upToNextMajor(from: "5.0.0")
+        ),
+        .local(path: "../LocalPackage")
+    ],
+    targets: [
+        .target(
+            name: "App",
+            destinations: .iOS,
+            product: .app,
+            bundleId: "dev.tuist.App",
+            sources: ["Sources/**"],
+            dependencies: [
+                .external(name: "Alamofire")
+            ]
+        )
+    ]
+)
+```
+
+## Examples
+
+### Simple iOS app
+
+```swift
+import ProjectDescription
+
+let project = Project(
+    name: "MyApp",
+    organizationName: "MyCompany",
+    targets: [
+        .target(
+            name: "MyApp",
+            destinations: .iOS,
+            product: .app,
+            bundleId: "com.mycompany.myapp",
+            infoPlist: .default,
+            sources: ["Sources/**"],
+            resources: ["Resources/**"],
+            dependencies: []
+        )
+    ]
+)
+```
+
+### App with framework and tests
+
+```swift
+import ProjectDescription
+
+let project = Project(
+    name: "MyApp",
+    targets: [
+        .target(
+            name: "App",
+            destinations: .iOS,
+            product: .app,
+            bundleId: "dev.tuist.App",
+            infoPlist: .default,
+            sources: ["App/Sources/**"],
+            resources: ["App/Resources/**"],
+            dependencies: [
+                .target(name: "Framework")
+            ]
+        ),
+        .target(
+            name: "Framework",
+            destinations: .iOS,
+            product: .framework,
+            bundleId: "dev.tuist.Framework",
+            infoPlist: .default,
+            sources: ["Framework/Sources/**"],
+            dependencies: []
+        ),
+        .target(
+            name: "AppTests",
+            destinations: .iOS,
+            product: .unitTests,
+            bundleId: "dev.tuist.AppTests",
+            infoPlist: .default,
+            sources: ["App/Tests/**"],
+            dependencies: [
+                .target(name: "App")
+            ]
+        )
+    ]
+)
+```
+
+### Multi-platform target
+
+```swift
+import ProjectDescription
+
+let project = Project(
+    name: "MultiPlatformApp",
+    targets: [
+        .target(
+            name: "App",
+            destinations: [.iPhone, .iPad, .macOS],
+            product: .app,
+            bundleId: "dev.tuist.App",
+            infoPlist: .default,
+            sources: ["Sources/**"],
+            resources: ["Resources/**"],
+            dependencies: []
+        )
+    ]
+)
+```
+
+### With custom schemes
+
+```swift
+import ProjectDescription
+
+let project = Project(
+    name: "MyApp",
+    targets: [
+        .target(
+            name: "App",
+            destinations: .iOS,
+            product: .app,
+            bundleId: "dev.tuist.App",
+            infoPlist: .default,
+            sources: ["Sources/**"],
+            dependencies: []
+        ),
+        .target(
+            name: "AppTests",
+            destinations: .iOS,
+            product: .unitTests,
+            bundleId: "dev.tuist.AppTests",
+            infoPlist: .default,
+            sources: ["Tests/**"],
+            dependencies: [.target(name: "App")]
+        )
+    ],
+    schemes: [
+        Scheme(
+            name: "App-Debug",
+            shared: true,
+            buildAction: .buildAction(targets: ["App"]),
+            testAction: .targets(["AppTests"]),
+            runAction: .runAction(executable: "App")
+        ),
+        Scheme(
+            name: "App-Release",
+            shared: true,
+            buildAction: .buildAction(targets: ["App"]),
+            runAction: .runAction(
+                executable: "App",
+                configuration: "Release"
+            )
+        )
+    ]
+)
+```
+
+## Best practices
+
+<CardGroup cols={2}>
+  <Card title="Modular structure" icon="cubes">
+    Break large projects into multiple smaller projects for better build times and organization.
+  </Card>
+  <Card title="Glob patterns" icon="asterisk">
+    Use glob patterns for sources and resources to automatically include new files.
+  </Card>
+  <Card title="Shared settings" icon="gear">
+    Define common settings in a shared location and reference them across targets.
+  </Card>
+  <Card title="Test targets" icon="flask">
+    Create separate test targets for unit tests and UI tests.
+  </Card>
+</CardGroup>
+
+## Related
+
+- [Workspace.swift reference](/cli/config/workspace)
+- [Tuist.swift reference](/cli/config/tuist-config)
+- [Generate command](/cli/generate)

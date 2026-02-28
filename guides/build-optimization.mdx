@@ -1,0 +1,626 @@
+---
+title: 'Build Optimization'
+description: 'Speed up your builds with caching, selective testing, and optimization techniques'
+icon: 'bolt'
+---
+
+## Overview
+
+Slow builds reduce productivity and increase iteration time. Tuist provides powerful optimization features including binary caching, selective testing, and build insights to dramatically speed up your development workflow.
+
+## Understanding Build Performance
+
+Build time consists of:
+
+- **Compilation**: Converting source code to object files
+- **Linking**: Combining object files into executables
+- **Code signing**: Signing binaries and frameworks
+- **Resource processing**: Copying and processing assets
+- **Dependency resolution**: Resolving external packages
+
+<Tip>
+The biggest performance gains come from avoiding unnecessary compilation through caching.
+</Tip>
+
+## Binary Caching
+
+Tuist's caching feature shares build artifacts remotely so your team and CI get faster builds without rebuilding unchanged code.
+
+### Cache Types
+
+Tuist offers different caching solutions:
+
+#### Module Cache
+
+Cache individual modules as binaries for projects using Tuist-generated projects.
+
+**Best for**: Teams using Tuist for project generation
+
+**Benefits**:
+- Cache targets individually
+- Share across team and CI
+- Automatic cache invalidation
+- Works with modularized apps
+
+#### Xcode Cache
+
+Share Xcode compilation artifacts across environments.
+
+**Best for**: Any Xcode project (no Tuist project generation required)
+
+**Benefits**:
+- Works with existing Xcode projects
+- No project changes needed
+- Share build artifacts
+- Compatible with Xcode Build System
+
+#### Gradle Cache
+
+Share Gradle build cache artifacts remotely (for Android projects).
+
+**Best for**: Android projects using Gradle
+
+### Setting Up Module Cache
+
+<Steps>
+
+### Step 1: Configure Authentication
+
+Authenticate with Tuist Server:
+
+```bash
+tuist auth
+```
+
+Follow the prompts to authenticate with your Tuist account.
+
+### Step 2: Enable Caching
+
+Update `Tuist.swift`:
+
+```swift Tuist.swift
+import ProjectDescription
+
+let tuist = Tuist(
+    fullHandle: "your-org/your-project",
+    project: .tuist(
+        generationOptions: .options(
+            enableCaching: true
+        )
+    )
+)
+```
+
+### Step 3: Generate with Caching
+
+```bash
+tuist generate
+```
+
+Tuist automatically uses cached binaries for unchanged targets.
+
+### Step 4: Warm the Cache
+
+On CI, warm the cache for the team:
+
+```bash
+tuist cache warm
+```
+
+</Steps>
+
+### How Module Cache Works
+
+1. **Fingerprinting**: Tuist calculates a hash for each target based on:
+   - Source files
+   - Dependencies
+   - Build settings
+   - Resources
+
+2. **Cache lookup**: Before building, Tuist checks if a cached binary exists for each target's fingerprint
+
+3. **Cache hit**: If found, the cached binary is downloaded and used instead of compiling
+
+4. **Cache miss**: If not found, the target is compiled and the binary is uploaded to the cache
+
+<Tip>
+The first build after enabling caching will be slower as it warms the cache. Subsequent builds will be much faster.
+</Tip>
+
+### Cache Performance Example
+
+**Without caching**:
+```bash
+# Full rebuild
+tuist generate && xcodebuild build
+# Time: 8m 30s
+```
+
+**With caching** (90% cache hit rate):
+```bash
+# Most targets from cache
+tuist generate && xcodebuild build
+# Time: 1m 15s
+# Speedup: 6.8x faster
+```
+
+## Selective Testing
+
+Run only tests affected by your changes, not the entire test suite.
+
+### How It Works
+
+Tuist analyzes:
+- Changed source files
+- Dependency graph
+- Test coverage data
+
+It determines which tests could be affected and runs only those.
+
+### Using Selective Testing
+
+```bash
+# Run only affected tests
+tuist test --selective
+
+# See which tests would run
+tuist test --selective --dry-run
+```
+
+### Example Impact
+
+**Without selective testing**:
+```bash
+tuist test
+# Runs: 2,500 tests
+# Time: 12m 30s
+```
+
+**With selective testing**:
+```bash
+tuist test --selective
+# Runs: 85 tests (affected by changes)
+# Time: 45s
+# Speedup: 16.7x faster
+```
+
+<Warning>
+Selective testing requires Tuist-generated projects and cannot be used with CocoaPods dependencies.
+</Warning>
+
+## Static vs Dynamic Linking Optimization
+
+Choose linking strategy based on the build type:
+
+### Optimal Configuration
+
+**Debug builds**: Dynamic linking
+- Faster incremental builds
+- Faster iteration during development
+- Larger app size (acceptable for debug)
+
+**Release builds**: Static linking  
+- Faster app launch time
+- Smaller app size
+- Better runtime performance
+
+### Implementation
+
+Use environment variables to switch linking:
+
+```swift Tuist/ProjectDescriptionHelpers/Product+Linking.swift
+import ProjectDescription
+
+public extension Product {
+    static func framework(dynamic: Bool = true) -> Product {
+        if case let .string(linking) = Environment.linking {
+            return linking == "static" ? .staticFramework : .framework
+        }
+        return dynamic ? .framework : .staticFramework
+    }
+}
+```
+
+Use in targets:
+
+```swift Project.swift
+.target(
+    name: "FeatureA",
+    product: .framework(),  // Dynamic by default
+    // ...
+)
+```
+
+Generate with different linking:
+
+```bash
+# Development: dynamic linking
+tuist generate
+
+# Release: static linking
+LINKING=static tuist generate
+```
+
+## Compilation Optimization
+
+### Whole Module Optimization
+
+Optimize across entire modules in release builds:
+
+```bash xcconfigs/Release.xcconfig
+SWIFT_COMPILATION_MODE = wholemodule
+SWIFT_OPTIMIZATION_LEVEL = -O
+```
+
+### Incremental Builds for Debug
+
+Fast iteration in debug builds:
+
+```bash xcconfigs/Debug.xcconfig
+SWIFT_COMPILATION_MODE = incremental
+SWIFT_OPTIMIZATION_LEVEL = -Onone
+```
+
+### Build Settings Best Practices
+
+<CodeGroup>
+
+```bash Debug Configuration
+// Fast iteration
+SWIFT_OPTIMIZATION_LEVEL = -Onone
+SWIFT_COMPILATION_MODE = incremental
+ENABLE_TESTABILITY = YES
+GCC_OPTIMIZATION_LEVEL = 0
+ONLY_ACTIVE_ARCH = YES
+```
+
+```bash Release Configuration
+// Optimized for performance
+SWIFT_OPTIMIZATION_LEVEL = -O
+SWIFT_COMPILATION_MODE = wholemodule
+ENABLE_TESTABILITY = NO
+GCC_OPTIMIZATION_LEVEL = s
+ONLY_ACTIVE_ARCH = NO
+```
+
+</CodeGroup>
+
+## Dependency Optimization
+
+### Precompiled Dependencies
+
+Use binary dependencies for large, stable packages:
+
+```swift Tuist/Package.swift
+let package = Package(
+    name: "MyApp",
+    dependencies: [],
+    targets: [
+        .binaryTarget(
+            name: "Firebase",
+            url: "https://github.com/firebase/firebase-ios-sdk/releases/download/10.20.0/Firebase.zip",
+            checksum: "abc123..."
+        )
+    ]
+)
+```
+
+### Force Resolved Versions
+
+On CI, avoid dependency resolution time:
+
+```bash
+tuist install --force-resolved-versions
+```
+
+This uses the exact versions in `Package.resolved`, skipping resolution.
+
+## Build Insights
+
+Understand where build time is spent:
+
+### Xcode Build Timeline
+
+Generate build timeline reports:
+
+```bash
+xcodebuild build \
+  -workspace App.xcworkspace \
+  -scheme App \
+  -destination 'platform=iOS Simulator,name=iPhone 15' \
+  | xcbeautify --report html
+```
+
+### Tuist Insights
+
+For projects using Tuist Server, access build insights:
+
+```bash
+tuist build --insights
+```
+
+View in the dashboard:
+- Build duration trends
+- Cache hit rates
+- Slowest targets
+- Build frequency
+
+## Modularization for Build Performance
+
+Break large targets into smaller modules:
+
+### Before: Monolithic Target
+
+```bash
+App (5000 files)
+├── Features/
+├── UI/
+├── Networking/
+└── Database/
+
+# Build time: 8 minutes
+# Cache: All or nothing
+```
+
+### After: Modular Targets
+
+```bash
+App (100 files)
+├── FeatureA (800 files)
+├── FeatureB (700 files)
+├── UIKit (500 files)
+├── Networking (300 files)
+└── Database (400 files)
+
+# Build time: 2 minutes (with cache)
+# Cache: Granular per module
+```
+
+### Benefits of Modularization
+
+- **Faster incremental builds**: Only changed modules rebuild
+- **Better caching**: Cache individual modules
+- **Parallel compilation**: Modules build in parallel
+- **Clearer dependencies**: Explicit dependency graph
+- **Easier testing**: Test modules independently
+
+<Tip>
+Aim for targets with 200-500 files each. Smaller targets enable better caching but add overhead.
+</Tip>
+
+## CI/CD Build Optimization
+
+### GitHub Actions Example
+
+```yaml .github/workflows/build.yml
+name: Build
+
+on: [pull_request]
+
+env:
+  TUIST_ENABLE_CACHING: true
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Tuist
+        run: curl -Ls https://install.tuist.io | bash
+      
+      - name: Authenticate with Tuist
+        run: |
+          tuist auth --token ${{ secrets.TUIST_TOKEN }}
+      
+      - name: Restore dependency cache
+        uses: actions/cache@v4
+        with:
+          path: Tuist/Dependencies
+          key: deps-${{ hashFiles('Tuist/Package.resolved') }}
+      
+      - name: Install dependencies
+        run: tuist install --force-resolved-versions
+      
+      - name: Generate project
+        run: tuist generate
+      
+      - name: Build
+        run: |
+          xcodebuild build \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            -quiet
+      
+      - name: Run tests
+        run: tuist test --selective
+```
+
+### Cache Warming Strategy
+
+Warm cache on main branch:
+
+```yaml .github/workflows/cache-warm.yml
+name: Warm Cache
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  warm-cache:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Tuist
+        run: curl -Ls https://install.tuist.io | bash
+      - name: Authenticate
+        run: tuist auth --token ${{ secrets.TUIST_TOKEN }}
+      - name: Install dependencies
+        run: tuist install --force-resolved-versions
+      - name: Warm cache
+        run: tuist cache warm
+```
+
+## Build Time Monitoring
+
+### Track Build Times
+
+Add timing to your build scripts:
+
+```bash build.sh
+#!/bin/bash
+set -e
+
+start_time=$(date +%s)
+
+echo "Installing dependencies..."
+tuist install --force-resolved-versions
+
+echo "Generating project..."
+tuist generate
+
+echo "Building..."
+xcodebuild build -workspace App.xcworkspace -scheme App
+
+end_time=$(date +%s)
+elapsed=$((end_time - start_time))
+
+echo "Total build time: ${elapsed}s"
+```
+
+### Set Build Time Goals
+
+- **Local incremental build**: < 30s
+- **Local clean build**: < 5m
+- **CI build (with cache)**: < 3m
+- **CI build (cold cache)**: < 10m
+
+<Warning>
+If build times exceed these goals, investigate with build insights and consider further modularization.
+</Warning>
+
+## Troubleshooting Slow Builds
+
+### Identify Slow Targets
+
+Use Xcode build timeline:
+
+1. Build with timing enabled:
+   ```bash
+   xcodebuild build -workspace App.xcworkspace -scheme App \
+     OTHER_SWIFT_FLAGS="-Xfrontend -debug-time-compilation"
+   ```
+
+2. Find slowest files/functions in build log
+
+### Common Performance Issues
+
+#### Issue: Cache Not Being Used
+
+**Symptoms**: Every build compiles everything
+
+**Solutions**:
+- Verify `enableCaching: true` in Tuist.swift
+- Check authentication: `tuist auth`
+- Ensure deterministic build settings
+- Review fingerprinting with `tuist cache --verbose`
+
+#### Issue: Slow Dependency Resolution
+
+**Symptoms**: `tuist install` takes minutes
+
+**Solutions**:
+- Use `--force-resolved-versions` on CI
+- Cache `Tuist/Dependencies` directory
+- Minimize number of dependencies
+- Use binary dependencies for large packages
+
+#### Issue: Slow Linking
+
+**Symptoms**: Compilation fast, but linking slow
+
+**Solutions**:
+- Use dynamic linking in debug builds
+- Reduce number of frameworks to link
+- Enable incremental linking in debug
+
+#### Issue: Slow Resource Processing
+
+**Symptoms**: Long "Copy Resources" phase
+
+**Solutions**:
+- Optimize image assets (use asset catalogs)
+- Compress large resources
+- Move resources to dynamic frameworks
+
+## Best Practices Summary
+
+<Steps>
+
+### Enable Caching
+
+Set up binary caching for your team:
+```bash
+tuist auth
+# Update Tuist.swift to enable caching
+tuist cache warm
+```
+
+### Use Selective Testing
+
+Run only affected tests:
+```bash
+tuist test --selective
+```
+
+### Optimize Linking Strategy
+
+Dynamic for debug, static for release:
+```swift
+Product.framework()  // Dynamic in debug
+LINKING=static tuist generate  // Static for release
+```
+
+### Modularize Large Targets
+
+Break targets with >500 files into smaller modules
+
+### Monitor Build Times
+
+Track and set goals for build performance
+
+### Cache Dependencies on CI
+
+Cache resolved dependencies:
+```yaml
+- uses: actions/cache@v4
+  with:
+    path: Tuist/Dependencies
+    key: deps-${{ hashFiles('Tuist/Package.resolved') }}
+```
+
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Set Up CI/CD" icon="rotate" href="/guides/ci-cd">
+  Configure CI for optimal build performance
+</Card>
+
+<Card title="Project Structure" icon="sitemap" href="/guides/project-structure">
+  Learn how to structure projects for better builds
+</Card>
+
+<Card title="Manage Dependencies" icon="box" href="/guides/dependencies">
+  Optimize dependency management
+</Card>
+
+<Card title="Migrate from Xcode" icon="arrow-right-arrow-left" href="/guides/migrate-from-xcode">
+  Enable caching by migrating to Tuist
+</Card>
+
+</CardGroup>
