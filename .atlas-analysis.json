@@ -1,0 +1,162 @@
+{
+  "projectType": "framework",
+  "projectName": "Tuist",
+  "projectDescription": "A virtual platform team for Swift app developers who ship",
+  "theme": "aspen",
+  "primaryColor": "#0055FF",
+  "lightColor": "#3D7AFF",
+  "darkColor": "#0044CC",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/architecture",
+              "concepts/generated-projects",
+              "concepts/manifests",
+              "concepts/workspaces"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/cache",
+              "features/selective-testing",
+              "features/previews",
+              "features/qa",
+              "features/insights",
+              "features/bundle-size",
+              "features/registry"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/migrate-from-xcode",
+              "guides/project-structure",
+              "guides/dependencies",
+              "guides/build-optimization",
+              "guides/ci-cd"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI Reference",
+        "groups": [
+          {
+            "group": "Commands",
+            "pages": [
+              "cli/init",
+              "cli/generate",
+              "cli/build",
+              "cli/test",
+              "cli/cache",
+              "cli/share",
+              "cli/run"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "cli/config/tuist-config",
+              "cli/config/project",
+              "cli/config/workspace"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "ProjectDescription",
+            "pages": [
+              "api/project",
+              "api/target",
+              "api/scheme",
+              "api/settings",
+              "api/dependencies"
+            ]
+          },
+          {
+            "group": "ProjectAutomation",
+            "pages": [
+              "api/automation/overview",
+              "api/automation/build",
+              "api/automation/test"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Cloud Services",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "cloud/introduction",
+              "cloud/authentication"
+            ]
+          },
+          {
+            "group": "Services",
+            "pages": [
+              "cloud/cache",
+              "cloud/previews",
+              "cloud/qa",
+              "cloud/insights",
+              "cloud/bundle-analysis",
+              "cloud/registry"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Generated Xcode projects from Swift manifests",
+    "Binary caching for faster builds (up to 65% improvement)",
+    "Selective testing based on file changes",
+    "Swift package registry with fast resolution",
+    "App previews sharing via URL",
+    "Automated QA with AI agents",
+    "Build and bundle insights",
+    "Multi-platform support (iOS, macOS, Android)"
+  ],
+  "publicApiSurface": [
+    "tuist init",
+    "tuist generate",
+    "tuist build",
+    "tuist test",
+    "tuist cache",
+    "tuist share",
+    "tuist run",
+    "tuist auth",
+    "tuist project",
+    "tuist organization",
+    "tuist bundle",
+    "tuist registry",
+    "tuist inspect",
+    "Project.swift",
+    "Workspace.swift",
+    "Config.swift",
+    "ProjectDescription.Project",
+    "ProjectDescription.Target",
+    "ProjectDescription.Scheme",
+    "ProjectDescription.Settings",
+    "ProjectDescription.Dependencies",
+    "ProjectAutomation"
+  ]
+}
