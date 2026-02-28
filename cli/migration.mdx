@@ -1,0 +1,304 @@
+---
+title: "tuist migration"
+description: "Utilities to migrate Xcode projects to Tuist"
+---
+
+## Overview
+
+The `tuist migration` command provides a set of utilities to assist in migrating existing Xcode projects to Tuist. These tools help you analyze your current project structure and extract configuration for easier migration.
+
+## Usage
+
+```bash
+tuist migration [subcommand] [options]
+```
+
+## Subcommands
+
+### `tuist migration settings-to-xcconfig`
+
+Extracts build settings from a project or target into an `.xcconfig` file.
+
+```bash
+tuist migration settings-to-xcconfig [options]
+```
+
+### `tuist migration check-empty-settings`
+
+Checks if the build settings of a project or target are empty. Exits unsuccessfully if settings are not empty.
+
+```bash
+tuist migration check-empty-settings [options]
+```
+
+### `tuist migration list-targets`
+
+Lists the targets of a project sorted by number of dependencies.
+
+```bash
+tuist migration list-targets [options]
+```
+
+## Options (for `settings-to-xcconfig`)
+
+<ParamField path="--xcodeprojPath" type="string" required>
+  The path to the Xcode project.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--xcodeprojPath`.
+</ParamField>
+
+<ParamField path="--xcconfigPath" type="string" required>
+  The path to the `.xcconfig` file where build settings will be extracted.
+</ParamField>
+
+<ParamField path="-x" type="string">
+  Short form of `--xcconfigPath`.
+</ParamField>
+
+<ParamField path="--target" type="string">
+  The name of the target whose build settings will be extracted. When not passed, it extracts the build settings of the project.
+</ParamField>
+
+<ParamField path="-t" type="string">
+  Short form of `--target`.
+</ParamField>
+
+## Options (for `check-empty-settings`)
+
+<ParamField path="--xcodeprojPath" type="string" required>
+  The path to the Xcode project.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--xcodeprojPath`.
+</ParamField>
+
+<ParamField path="--target" type="string">
+  The name of the target whose build settings will be checked. When not passed, it checks the build settings of the project.
+</ParamField>
+
+<ParamField path="-t" type="string">
+  Short form of `--target`.
+</ParamField>
+
+## Options (for `list-targets`)
+
+<ParamField path="--xcodeprojPath" type="string" required>
+  The path to the Xcode project.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--xcodeprojPath`.
+</ParamField>
+
+## Examples
+
+### Extract project build settings
+
+```bash
+tuist migration settings-to-xcconfig \
+  --xcodeprojPath MyApp.xcodeproj \
+  --xcconfigPath Config/Project.xcconfig
+```
+
+Extracts all project-level build settings into a `.xcconfig` file.
+
+### Extract target build settings
+
+```bash
+tuist migration settings-to-xcconfig \
+  --xcodeprojPath MyApp.xcodeproj \
+  --xcconfigPath Config/MyApp.xcconfig \
+  --target MyApp
+```
+
+Extracts build settings for the `MyApp` target.
+
+### Check if settings are empty
+
+```bash
+tuist migration check-empty-settings \
+  --xcodeprojPath MyApp.xcodeproj \
+  --target MyApp
+```
+
+Verifies that the `MyApp` target has no build settings defined directly.
+
+### List targets by dependencies
+
+```bash
+tuist migration list-targets --xcodeprojPath MyApp.xcodeproj
+```
+
+Shows all targets sorted by their number of dependencies, helping you plan migration order.
+
+## Migration workflow
+
+A typical migration workflow using these utilities:
+
+### 1. Analyze your project
+
+Start by understanding your project structure:
+
+```bash
+tuist migration list-targets --xcodeprojPath MyApp.xcodeproj
+```
+
+This shows targets sorted by dependencies. Targets with fewer dependencies are easier to migrate first.
+
+### 2. Extract build settings
+
+For each target, extract build settings to `.xcconfig` files:
+
+```bash
+# Extract project-level settings
+tuist migration settings-to-xcconfig \
+  --xcodeprojPath MyApp.xcodeproj \
+  --xcconfigPath Config/Project.xcconfig
+
+# Extract target-specific settings
+tuist migration settings-to-xcconfig \
+  --xcodeprojPath MyApp.xcodeproj \
+  --xcconfigPath Config/MyFramework.xcconfig \
+  --target MyFramework
+```
+
+### 3. Create Tuist manifests
+
+Create `Project.swift` files referencing the extracted `.xcconfig` files:
+
+```swift
+import ProjectDescription
+
+let project = Project(
+    name: "MyApp",
+    settings: .settings(
+        base: [:],
+        configurations: [
+            .debug(name: "Debug", xcconfig: "Config/Project.xcconfig"),
+            .release(name: "Release", xcconfig: "Config/Project.xcconfig")
+        ]
+    ),
+    targets: [
+        .target(
+            name: "MyApp",
+            settings: .settings(
+                base: [:],
+                configurations: [
+                    .debug(name: "Debug", xcconfig: "Config/MyApp.xcconfig"),
+                    .release(name: "Release", xcconfig: "Config/MyApp.xcconfig")
+                ]
+            )
+        )
+    ]
+)
+```
+
+### 4. Verify empty settings
+
+After moving settings to `.xcconfig` files and Tuist manifests, verify the original Xcode project has no settings:
+
+```bash
+tuist migration check-empty-settings \
+  --xcodeprojPath MyApp.xcodeproj \
+  --target MyApp
+```
+
+This ensures all settings have been properly migrated.
+
+## Migration strategies
+
+### Incremental migration
+
+Migrate one target at a time, starting with:
+
+1. **Leaf targets**: Targets with no dependencies
+2. **Framework targets**: Reusable components
+3. **App targets**: Main applications last
+
+Use `list-targets` to identify the best order.
+
+### Settings organization
+
+Organize extracted settings by:
+
+- **Shared settings**: Common to all targets
+- **Target-specific settings**: Unique to each target
+- **Configuration-specific**: Debug vs. Release
+
+Example structure:
+
+```
+Config/
+├── Project.xcconfig           # Project-level settings
+├── Shared.xcconfig           # Shared across targets
+├── Debug.xcconfig            # Debug configuration
+├── Release.xcconfig          # Release configuration
+└── Targets/
+    ├── MyApp.xcconfig        # MyApp target
+    └── MyFramework.xcconfig  # MyFramework target
+```
+
+### Gradual transition
+
+You can maintain both Xcode projects and Tuist manifests during migration:
+
+1. Extract settings to `.xcconfig` files
+2. Reference `.xcconfig` files in both Xcode and Tuist
+3. Gradually move build logic to Tuist
+4. Verify with `check-empty-settings`
+5. Remove Xcode project when fully migrated
+
+## Best practices
+
+<CardGroup cols={2}>
+  <Card title="Start small" icon="seedling">
+    Begin with leaf targets that have no dependencies for easier migration.
+  </Card>
+  <Card title="Extract settings" icon="file-export">
+    Move build settings to `.xcconfig` files for better version control.
+  </Card>
+  <Card title="Verify migration" icon="check">
+    Use `check-empty-settings` to ensure complete migration.
+  </Card>
+  <Card title="Incremental approach" icon="stairs">
+    Migrate one target at a time rather than the entire project at once.
+  </Card>
+</CardGroup>
+
+## Common migration patterns
+
+### Extracting compiler flags
+
+`.xcconfig` files extracted by `settings-to-xcconfig` include compiler flags like:
+
+```
+OTHER_SWIFT_FLAGS = -D DEBUG -D CUSTOM_FLAG
+GCC_PREPROCESSOR_DEFINITIONS = DEBUG=1
+```
+
+### Framework search paths
+
+Search paths are preserved during extraction:
+
+```
+FRAMEWORK_SEARCH_PATHS = $(inherited) $(PROJECT_DIR)/Frameworks
+HEADER_SEARCH_PATHS = $(inherited) $(PROJECT_DIR)/Headers
+```
+
+### Code signing settings
+
+Code signing configuration is also extracted:
+
+```
+CODE_SIGN_IDENTITY = Apple Development
+DEVELOPMENT_TEAM = ABCDE12345
+```
+
+## Related
+
+- [Init command](/cli/init)
+- [Generate command](/cli/generate)
+- [Project.swift reference](/cli/config/project)

@@ -1,0 +1,82 @@
+---
+title: "tuist version"
+description: "Display the current Tuist version"
+---
+
+## Overview
+
+The `tuist version` command outputs the current version of Tuist installed on your system.
+
+## Usage
+
+```bash
+tuist version
+```
+
+## Output
+
+The command outputs the version number in semantic versioning format:
+
+```bash
+4.5.0
+```
+
+## Examples
+
+### Check your Tuist version
+
+```bash
+tuist version
+```
+
+Outputs the installed version, for example: `4.5.0`
+
+### Use in scripts
+
+```bash
+VERSION=$(tuist version)
+echo "Running Tuist $VERSION"
+```
+
+Captures the version for use in shell scripts.
+
+### Verify installation
+
+```bash
+if tuist version; then
+  echo "Tuist is installed"
+else
+  echo "Tuist is not installed"
+fi
+```
+
+Checks if Tuist is properly installed.
+
+## Use cases
+
+- **Debugging**: Verify which Tuist version you're running when reporting issues
+- **CI/CD**: Validate the Tuist version in automated workflows
+- **Team alignment**: Ensure all team members use the same Tuist version
+- **Documentation**: Reference the version when creating bug reports or asking for help
+
+## Version management
+
+To manage Tuist versions across your team:
+
+1. **Use `.tuist-version`**: Pin a specific version in your project root:
+   ```
+   4.5.0
+   ```
+
+2. **Use mise**: Install and manage Tuist versions with mise:
+   ```bash
+   mise install tuist@4.5.0
+   mise use tuist@4.5.0
+   ```
+
+3. **CI configuration**: Specify the version in your CI configuration to ensure consistent builds
+
+## Related
+
+- [Installation guide](/installation)
+- [Tuist releases](https://github.com/tuist/tuist/releases)

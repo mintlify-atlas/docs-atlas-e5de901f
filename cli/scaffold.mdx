@@ -1,0 +1,179 @@
+---
+title: "tuist scaffold"
+description: "Generate new code from templates"
+---
+
+## Overview
+
+The `tuist scaffold` command generates new code from templates. It's useful for creating consistent project structures, new features, or boilerplate code following your team's conventions.
+
+Templates can be built-in or custom-defined in your project's `Tuist/Templates` directory.
+
+## Usage
+
+```bash
+tuist scaffold <template> [options]
+```
+
+## Options
+
+<ParamField path="--path" type="string" default=".">
+  The path to the folder where the template will be generated.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+<ParamField path="--json" type="boolean" default="false">
+  Output in JSON format.
+</ParamField>
+
+## Arguments
+
+<ParamField path="template" type="string" required>
+  Name of the template you want to use.
+</ParamField>
+
+<ParamField path="[template-options]" type="string">
+  Templates can define their own custom options. Use `tuist scaffold list` to see available templates and their options.
+</ParamField>
+
+## Examples
+
+### Generate from a template
+
+```bash
+tuist scaffold feature
+```
+
+Generates code using the `feature` template in the current directory.
+
+### Generate to specific path
+
+```bash
+tuist scaffold feature --path Features/NewFeature
+```
+
+Generates the template code in the specified directory.
+
+### Template with custom options
+
+```bash
+tuist scaffold module --name MyModule --platform iOS
+```
+
+Uses the `module` template with custom options `name` and `platform`.
+
+## Subcommands
+
+### `tuist scaffold list`
+
+Lists all available scaffold templates.
+
+```bash
+tuist scaffold list [options]
+```
+
+#### Options
+
+<ParamField path="--path" type="string" default=".">
+  The path where you want to list templates from.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+<ParamField path="--json" type="boolean" default="false">
+  Output the list in JSON format.
+</ParamField>
+
+#### Example
+
+```bash
+tuist scaffold list
+```
+
+Displays all available templates in table format.
+
+```bash
+tuist scaffold list --json
+```
+
+Outputs available templates as JSON.
+
+## Creating custom templates
+
+Custom templates are defined in your project's `Tuist/Templates` directory. Each template is a subdirectory containing:
+
+1. **Template files**: Files and directories to be generated, with support for variable substitution
+2. **Template.swift**: Defines the template configuration, including:
+   - Required and optional attributes
+   - File generation logic
+   - Variable substitutions
+
+### Template structure
+
+```
+Tuist/Templates/
+└── feature/
+    ├── Template.swift
+    └── feature.stencil
+```
+
+### Example Template.swift
+
+```swift
+import ProjectDescription
+
+let template = Template(
+    description: "Feature template",
+    attributes: [
+        .required("name"),
+        .optional("platform", default: "iOS"),
+    ],
+    items: [
+        .file(
+            path: "Sources/\(Template.Attribute.name)/Feature.swift",
+            templatePath: "feature.stencil"
+        ),
+    ]
+)
+```
+
+### Using template variables
+
+Template files support variable substitution using the Stencil templating language:
+
+```swift
+// feature.stencil
+import Foundation
+
+struct {{ name }}Feature {
+    let platform: String = "{{ platform }}"
+}
+```
+
+When you run `tuist scaffold feature --name Auth --platform iOS`, Tuist generates:
+
+```swift
+import Foundation
+
+struct AuthFeature {
+    let platform: String = "iOS"
+}
+```
+
+## Best practices
+
+- **Organize templates**: Group related templates in your `Tuist/Templates` directory
+- **Document templates**: Add clear descriptions and attribute names
+- **Use validation**: Define required vs optional attributes appropriately
+- **Version control**: Commit your templates to share with your team
+- **Test templates**: Run scaffold commands in test directories before committing
+
+## Related
+
+- [Init command](/cli/init)
+- [Generate command](/cli/generate)

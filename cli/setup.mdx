@@ -1,0 +1,88 @@
+---
+title: "tuist setup"
+description: "Configure Tuist services and features"
+---
+
+## Overview
+
+The `tuist setup` command provides subcommands to configure various Tuist services and features in your development environment.
+
+## Usage
+
+```bash
+tuist setup <subcommand> [options]
+```
+
+## Subcommands
+
+### `tuist setup cache`
+
+Sets up the Tuist Xcode cache for your project. This command prepares your project to use Tuist's binary caching capabilities, which can significantly speed up build times.
+
+```bash
+tuist setup cache [options]
+```
+
+#### Options
+
+<ParamField path="--path" type="string" default=".">
+  The path to the directory or a subdirectory of the project.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+#### Example
+
+```bash
+tuist setup cache
+```
+
+Sets up binary caching for the project in the current directory.
+
+```bash
+tuist setup cache --path ~/Projects/MyApp
+```
+
+Sets up binary caching for a project in a specific directory.
+
+## Cache setup
+
+The cache setup process:
+
+1. **Validates project structure**: Ensures your project is compatible with caching
+2. **Configures cache settings**: Sets up necessary cache configurations
+3. **Prepares storage**: Initializes local or remote cache storage
+4. **Generates metadata**: Creates cache-related metadata files
+
+### Benefits of cache setup
+
+- **Faster builds**: Reuse pre-compiled binaries instead of rebuilding unchanged targets
+- **Reduced CI time**: Share cache artifacts across CI runs and developers
+- **Better iteration speed**: Focus on changed code while using cached dependencies
+- **Team collaboration**: Share cache artifacts with your team through Tuist Cloud
+
+### Cache profiles
+
+After setting up cache, you can use different cache profiles:
+
+- **simulator**: Cache for simulator architectures
+- **device**: Cache for device architectures  
+- **all**: Cache for all architectures
+- **none**: Disable caching
+- **Custom profiles**: Define your own in `Tuist.swift`
+
+## Related commands
+
+Once cache is set up, use these commands to work with the cache:
+
+- **Cache warming**: `tuist cache` - Pre-populate the cache
+- **Generation with cache**: `tuist generate --cache-profile simulator`
+- **Building with cache**: `tuist build` (automatically uses cache)
+
+## Related
+
+- [Cache command](/cli/cache)
+- [Generate command](/cli/generate)
+- [Build command](/cli/build)

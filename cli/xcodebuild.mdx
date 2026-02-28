@@ -1,0 +1,247 @@
+---
+title: "tuist xcodebuild"
+description: "Extend xcodebuild with server capabilities"
+---
+
+## Overview
+
+The `tuist xcodebuild` command extends Apple's xcodebuild CLI with server capabilities such as selective testing, build analytics, and insights. It provides the same interface as xcodebuild while adding powerful features from Tuist Cloud.
+
+All standard xcodebuild arguments are passed through, so you can use it as a drop-in replacement.
+
+## Usage
+
+```bash
+tuist xcodebuild <action> [xcodebuild-arguments...]
+```
+
+## Subcommands
+
+### `tuist xcodebuild test`
+
+Runs tests with insights and analytics.
+
+```bash
+tuist xcodebuild test [xcodebuild-arguments...]
+```
+
+All arguments are passed through to xcodebuild's `test` action.
+
+#### Example
+
+```bash
+tuist xcodebuild test -scheme MyAppTests -destination 'platform=iOS Simulator,name=iPhone 15' -parallel-testing-enabled YES
+```
+
+### `tuist xcodebuild test-without-building`
+
+Runs tests without building first, with insights.
+
+```bash
+tuist xcodebuild test-without-building [xcodebuild-arguments...]
+```
+
+All arguments are passed through to xcodebuild's `test-without-building` action.
+
+#### Example
+
+```bash
+tuist xcodebuild test-without-building -scheme MyAppTests -destination 'platform=iOS Simulator,name=iPhone 15' -testConfiguration Debug
+```
+
+### `tuist xcodebuild build`
+
+Builds with insights and analytics.
+
+```bash
+tuist xcodebuild build [xcodebuild-arguments...]
+```
+
+All arguments are passed through to xcodebuild's `build` action.
+
+#### Example
+
+```bash
+tuist xcodebuild build -scheme MyApp -destination 'platform=iOS Simulator,name=iPhone 15'
+```
+
+### `tuist xcodebuild build-for-testing`
+
+Builds for testing with insights.
+
+```bash
+tuist xcodebuild build-for-testing [xcodebuild-arguments...]
+```
+
+All arguments are passed through to xcodebuild's `build-for-testing` action.
+
+#### Example
+
+```bash
+tuist xcodebuild build-for-testing -scheme MyAppTests -destination 'platform=iOS Simulator,name=iPhone 15'
+```
+
+### `tuist xcodebuild archive`
+
+Creates an archive with insights.
+
+```bash
+tuist xcodebuild archive [xcodebuild-arguments...]
+```
+
+All arguments are passed through to xcodebuild's `archive` action.
+
+#### Example
+
+```bash
+tuist xcodebuild archive -scheme MyApp -archivePath ./build/MyApp.xcarchive
+```
+
+## Server capabilities
+
+When connected to Tuist Cloud, `tuist xcodebuild` provides:
+
+### Selective testing
+
+Automatically runs only tests affected by code changes, significantly reducing test execution time. The command:
+
+1. Hashes your project's targets and dependencies
+2. Compares against cached test results on the server
+3. Runs only tests for changed code
+4. Uploads new test results for future runs
+
+This works automatically for unit tests when using `tuist xcodebuild test`.
+
+### Build analytics
+
+Collects and uploads build metrics including:
+
+- Build duration and status
+- Compilation times per target
+- Error and warning counts
+- Device and configuration information
+- Test results and coverage
+
+Analytics are viewable in the Tuist Cloud dashboard.
+
+### Insights
+
+Provides intelligent insights into your builds:
+
+- Performance bottlenecks
+- Flaky test detection
+- Build time trends
+- Error patterns
+
+## Drop-in replacement
+
+Replace `xcodebuild` with `tuist xcodebuild` in your existing scripts and CI workflows:
+
+**Before:**
+```bash
+xcodebuild test -scheme MyApp -destination 'platform=iOS Simulator,name=iPhone 15'
+```
+
+**After:**
+```bash
+tuist xcodebuild test -scheme MyApp -destination 'platform=iOS Simulator,name=iPhone 15'
+```
+
+All xcodebuild options, flags, and arguments work exactly the same way.
+
+## CI integration
+
+Use `tuist xcodebuild` in your CI pipelines to get insights and selective testing:
+
+### GitHub Actions
+
+```yaml
+- name: Run tests
+  run: |
+    tuist xcodebuild test \
+      -scheme MyApp \
+      -destination 'platform=iOS Simulator,name=iPhone 15'
+```
+
+### GitLab CI
+
+```yaml
+test:
+  script:
+    - tuist xcodebuild test -scheme MyApp -destination 'platform=iOS Simulator,name=iPhone 15'
+```
+
+### Jenkins
+
+```groovy
+stage('Test') {
+  steps {
+    sh 'tuist xcodebuild test -scheme MyApp -destination "platform=iOS Simulator,name=iPhone 15"'
+  }
+}
+```
+
+## Authentication
+
+To use server capabilities, authenticate with Tuist Cloud:
+
+```bash
+tuist auth
+```
+
+Or set the `TUIST_CONFIG_TOKEN` environment variable in CI.
+
+## Examples
+
+### Basic test run
+
+```bash
+tuist xcodebuild test -scheme MyAppTests
+```
+
+### Test with specific device
+
+```bash
+tuist xcodebuild test \
+  -scheme MyAppTests \
+  -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
+```
+
+### Build for multiple destinations
+
+```bash
+tuist xcodebuild build \
+  -scheme MyApp \
+  -destination 'platform=iOS Simulator,name=iPhone 15' \
+  -destination 'platform=iOS Simulator,name=iPad Pro (12.9-inch)'
+```
+
+### Archive for distribution
+
+```bash
+tuist xcodebuild archive \
+  -scheme MyApp \
+  -archivePath ./build/MyApp.xcarchive \
+  -configuration Release
+```
+
+### Test with parallel execution
+
+```bash
+tuist xcodebuild test \
+  -scheme MyAppTests \
+  -destination 'platform=iOS Simulator,name=iPhone 15' \
+  -parallel-testing-enabled YES
+```
+
+## Limitations
+
+- **Selective testing**: Currently only works for unit tests (not UI tests)
+- **Analytics**: Requires authentication with Tuist Cloud
+- **Network**: Requires internet connection to upload analytics
+
+## Related
+
+- [Test command](/cli/test)
+- [Build command](/cli/build)
+- [Auth command](/cli/auth)

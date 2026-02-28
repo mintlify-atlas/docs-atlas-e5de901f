@@ -1,0 +1,271 @@
+---
+title: "tuist graph"
+description: "Generate and visualize dependency graphs"
+---
+
+## Overview
+
+The `tuist graph` command generates a visual representation of your project's dependency graph. It analyzes the relationships between targets and outputs the graph in various formats including images (PNG, SVG) and structured data (DOT, JSON).
+
+## Usage
+
+```bash
+tuist graph [targets...] [options]
+```
+
+## Arguments
+
+<ParamField path="targets" type="string[]">
+  A list of targets to filter. Only those targets and their dependent targets will be shown in the graph. If no targets are specified, all targets are included.
+</ParamField>
+
+## Options
+
+<ParamField path="--format" type="string" default="png">
+  Output format for the graph. Available formats:
+  
+  - `png` - PNG image (default)
+  - `svg` - SVG vector image
+  - `dot` - GraphViz DOT format (plain text)
+  - `json` - JSON representation
+  - `legacyJSON` - Legacy JSON format
+</ParamField>
+
+<ParamField path="-f" type="string">
+  Short form of `--format`.
+</ParamField>
+
+<ParamField path="--algorithm" type="string" default="dot">
+  GraphViz layout algorithm to use. Available algorithms:
+  
+  - `dot` - Hierarchical layout (default, best for directed graphs)
+  - `neato` - Spring model layout
+  - `twopi` - Radial layout
+  - `circo` - Circular layout
+  - `fdp` - Force-directed layout
+  - `sfdp` - Scaled force-directed layout (for large graphs)
+  - `patchwork` - Squarified tree map layout
+</ParamField>
+
+<ParamField path="-a" type="string">
+  Short form of `--algorithm`.
+</ParamField>
+
+<ParamField path="--skip-test-targets" type="boolean" default="false">
+  Skip test targets during graph rendering.
+</ParamField>
+
+<ParamField path="-t" type="boolean">
+  Short form of `--skip-test-targets`.
+</ParamField>
+
+<ParamField path="--skip-external-dependencies" type="boolean" default="false">
+  Skip external dependencies (like Swift packages) in the graph.
+</ParamField>
+
+<ParamField path="-d" type="boolean">
+  Short form of `--skip-external-dependencies`.
+</ParamField>
+
+<ParamField path="--platform" type="string">
+  Filter targets by platform. Only targets for this platform will be shown. Available platforms: `ios`, `macos`, `tvos`, `watchos`.
+</ParamField>
+
+<ParamField path="-l" type="string">
+  Short form of `--platform`.
+</ParamField>
+
+<ParamField path="--no-open" type="boolean" default="false">
+  Don't open the generated file automatically. By default, the graph opens after generation.
+</ParamField>
+
+<ParamField path="--path" type="string" default=".">
+  The path to the directory that contains the project.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+<ParamField path="--output-path" type="string" default=".">
+  The path where the graph will be generated.
+</ParamField>
+
+<ParamField path="-o" type="string">
+  Short form of `--output-path`.
+</ParamField>
+
+## Examples
+
+### Generate default graph
+
+```bash
+tuist graph
+```
+
+Generates a PNG image of the complete dependency graph and opens it automatically.
+
+### Generate SVG graph
+
+```bash
+tuist graph --format svg
+```
+
+Creates a scalable vector graphics file of the dependency graph.
+
+### Generate DOT format
+
+```bash
+tuist graph --format dot
+```
+
+Outputs the graph in GraphViz DOT format, useful for processing with other tools.
+
+### Export to JSON
+
+```bash
+tuist graph --format json
+```
+
+Exports the graph structure as JSON for programmatic analysis.
+
+### Focus on specific targets
+
+```bash
+tuist graph App AppKit
+```
+
+Generates a graph showing only `App`, `AppKit`, and their dependencies.
+
+### Skip test targets
+
+```bash
+tuist graph --skip-test-targets
+```
+
+Creates a graph excluding all test targets for a cleaner view.
+
+### Skip external dependencies
+
+```bash
+tuist graph --skip-external-dependencies
+```
+
+Generates a graph without external dependencies like Swift packages.
+
+### Filter by platform
+
+```bash
+tuist graph --platform ios
+```
+
+Shows only iOS targets and their dependencies.
+
+### Use different layout algorithm
+
+```bash
+tuist graph --algorithm circo
+```
+
+Generates a circular layout, useful for showing cyclical dependencies.
+
+### Large graph optimization
+
+```bash
+tuist graph --algorithm sfdp --skip-test-targets
+```
+
+Uses the scaled force-directed algorithm, optimized for large graphs.
+
+### Save without opening
+
+```bash
+tuist graph --no-open --output-path ~/graphs/
+```
+
+Saves the graph to a specific location without opening it.
+
+### Complex filtering
+
+```bash
+tuist graph MyFeature --skip-test-targets --skip-external-dependencies --platform ios
+```
+
+Generates a focused graph for `MyFeature` on iOS, excluding tests and external dependencies.
+
+## Graph visualization
+
+The generated graph shows:
+
+- **Nodes**: Represent targets in your project
+- **Edges**: Show dependencies between targets
+- **Colors**: Different node colors may indicate target types
+- **Direction**: Arrows show the dependency direction (A → B means A depends on B)
+
+## Layout algorithms guide
+
+Choosing the right algorithm depends on your graph structure:
+
+- **dot**: Best for most projects, creates a hierarchical top-to-bottom layout
+- **neato**: Good for small to medium graphs with no clear hierarchy
+- **circo**: Useful for visualizing circular dependencies or feedback loops
+- **sfdp**: Recommended for very large graphs (100+ targets)
+- **twopi**: Creates a radial layout with one root node at the center
+- **fdp**: Similar to neato but with different force calculations
+- **patchwork**: Creates a space-filling layout, useful for showing relative sizes
+
+## Use cases
+
+### Understand dependencies
+
+Visualize how targets depend on each other:
+
+```bash
+tuist graph
+```
+
+### Detect circular dependencies
+
+Use circular layout to identify dependency cycles:
+
+```bash
+tuist graph --algorithm circo
+```
+
+### Architecture review
+
+Generate clean graphs for documentation or code review:
+
+```bash
+tuist graph --skip-test-targets --format svg
+```
+
+### Analyze feature modules
+
+Focus on specific feature dependencies:
+
+```bash
+tuist graph FeatureLogin FeatureProfile --skip-external-dependencies
+```
+
+### Export for tooling
+
+Generate JSON for custom analysis scripts:
+
+```bash
+tuist graph --format json --no-open --output-path analysis/
+```
+
+<Tip>
+  For large projects, combine `--skip-test-targets` and `--skip-external-dependencies` to create more readable graphs. You can also focus on specific targets to reduce complexity.
+</Tip>
+
+<Note>
+  The `dot` format output can be processed with GraphViz tools for custom visualization or integrated into documentation pipelines.
+</Note>
+
+## Related
+
+- [Project structure guide](/guides/project-structure)
+- [Dependencies documentation](/guides/dependencies)
+- [Generate command](/cli/generate)

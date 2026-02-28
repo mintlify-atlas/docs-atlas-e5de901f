@@ -1,0 +1,291 @@
+---
+title: "tuist mcp"
+description: "Integrate Tuist with AI tools via MCP server"
+---
+
+## Overview
+
+The `tuist mcp` command provides integration with AI tools through the Model Context Protocol (MCP). It allows AI assistants to interact with your Tuist project directly, enabling intelligent code generation, project analysis, and automation.
+
+## Usage
+
+```bash
+tuist mcp <subcommand> [options]
+```
+
+## Subcommands
+
+### `tuist mcp start`
+
+Starts the Tuist MCP server to interface LLMs with your local development environment.
+
+```bash
+tuist mcp start
+```
+
+This command is typically called automatically by your AI tool's configuration and not run manually.
+
+### `tuist mcp setup`
+
+Configures AI tools to use Tuist's MCP server.
+
+```bash
+tuist mcp setup <tool>
+```
+
+Available setup subcommands:
+
+- `tuist mcp setup claude` - Configure Claude desktop app
+- `tuist mcp setup claude-code` - Configure Claude Code
+- `tuist mcp setup cursor` - Configure Cursor IDE
+- `tuist mcp setup zed` - Configure Zed editor
+- `tuist mcp setup vscode` - Configure VS Code
+
+## Setup commands
+
+### `tuist mcp setup claude`
+
+Configures the Claude desktop application to use Tuist's MCP server.
+
+```bash
+tuist mcp setup claude
+```
+
+This modifies Claude's configuration file to enable MCP integration with Tuist.
+
+### `tuist mcp setup claude-code`
+
+Configures Claude Code to use Tuist's MCP server.
+
+```bash
+tuist mcp setup claude-code
+```
+
+### `tuist mcp setup cursor`
+
+Configures Cursor IDE to use Tuist's MCP server.
+
+```bash
+tuist mcp setup cursor [options]
+```
+
+#### Options
+
+<ParamField path="--path" type="string">
+  The path to the directory where the configuration should be created.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+<ParamField path="--global" type="boolean" default="false">
+  Configure Cursor globally instead of locally.
+</ParamField>
+
+#### Examples
+
+```bash
+tuist mcp setup cursor
+```
+
+Configures Cursor locally in the current directory.
+
+```bash
+tuist mcp setup cursor --global
+```
+
+Configures Cursor globally for all projects.
+
+```bash
+tuist mcp setup cursor --path ~/Projects/MyApp
+```
+
+Configures Cursor for a specific project directory.
+
+### `tuist mcp setup zed`
+
+Configures Zed editor to use Tuist's MCP server.
+
+```bash
+tuist mcp setup zed [options]
+```
+
+#### Options
+
+<ParamField path="--path" type="string">
+  The path to the directory where the configuration should be created.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+<ParamField path="--global" type="boolean" default="false">
+  Configure Zed globally instead of locally.
+</ParamField>
+
+#### Examples
+
+```bash
+tuist mcp setup zed
+```
+
+Configures Zed locally in the current directory.
+
+```bash
+tuist mcp setup zed --global
+```
+
+Configures Zed globally for all projects.
+
+### `tuist mcp setup vscode`
+
+Configures VS Code to use Tuist's MCP server.
+
+```bash
+tuist mcp setup vscode [options]
+```
+
+#### Options
+
+<ParamField path="--path" type="string">
+  The path to the directory where the configuration should be created.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+<ParamField path="--global" type="boolean" default="false">
+  Configure VS Code globally instead of locally.
+</ParamField>
+
+#### Examples
+
+```bash
+tuist mcp setup vscode
+```
+
+Configures VS Code locally in the current directory.
+
+```bash
+tuist mcp setup vscode --global
+```
+
+Configures VS Code globally for all projects.
+
+## What is MCP?
+
+The Model Context Protocol (MCP) is an open protocol that enables AI assistants to interact with development tools and environments. It provides:
+
+- **Context awareness**: AI tools understand your project structure
+- **Tool integration**: Execute Tuist commands through AI interfaces
+- **Code generation**: Generate Tuist manifests and configurations
+- **Project analysis**: Analyze dependencies and project health
+
+## MCP capabilities
+
+When connected via MCP, AI tools can:
+
+1. **Read project structure**: Understand your Tuist project layout
+2. **Generate manifests**: Create or modify `Project.swift` files
+3. **Run commands**: Execute Tuist commands on your behalf
+4. **Analyze dependencies**: Review and suggest dependency improvements
+5. **Debug issues**: Help troubleshoot Tuist configuration problems
+
+## Configuration scope
+
+MCP setup can be configured at two levels:
+
+### Local (project-specific)
+
+Configures MCP for a specific project directory:
+
+```bash
+tuist mcp setup cursor --path ~/Projects/MyApp
+```
+
+Creates configuration in the project's `.cursor/` directory.
+
+### Global (system-wide)
+
+Configures MCP globally for all projects:
+
+```bash
+tuist mcp setup cursor --global
+```
+
+Creates configuration in your home directory.
+
+## Supported AI tools
+
+Tuist MCP integration works with:
+
+- **Claude**: Anthropic's Claude desktop app
+- **Claude Code**: Claude's code-focused interface
+- **Cursor**: AI-first code editor
+- **Zed**: Collaborative code editor with AI features
+- **VS Code**: With MCP-compatible extensions
+
+## Getting started
+
+1. **Install your preferred AI tool** (Claude, Cursor, etc.)
+2. **Run the setup command**:
+   ```bash
+   tuist mcp setup <tool>
+   ```
+3. **Restart your AI tool** to load the new configuration
+4. **Start using AI features** with Tuist context
+
+## Example workflows
+
+### Generate a new target
+
+Ask your AI assistant:
+
+> "Create a new framework target called NetworkingKit with dependencies on Alamofire"
+
+The AI uses MCP to generate the appropriate `Project.swift` configuration.
+
+### Analyze project dependencies
+
+Ask your AI assistant:
+
+> "Show me all external dependencies and suggest ways to reduce them"
+
+The AI uses MCP to analyze your project's dependency graph.
+
+### Troubleshoot build issues
+
+Ask your AI assistant:
+
+> "My build is failing with a linker error. What's wrong?"
+
+The AI uses MCP to inspect your project configuration and suggest fixes.
+
+## Troubleshooting
+
+### MCP server not starting
+
+1. Verify Tuist is installed: `tuist version`
+2. Check the AI tool's logs for error messages
+3. Re-run the setup command: `tuist mcp setup <tool>`
+
+### AI tool not recognizing Tuist context
+
+1. Restart your AI tool after running setup
+2. Verify the configuration file was created
+3. Check that the AI tool has MCP support enabled
+
+### Permission issues
+
+1. Ensure you have write access to configuration directories
+2. Use `--global` flag if local setup fails
+3. Check file permissions on created configuration files
+
+## Related
+
+- [Generate command](/cli/generate)
+- [Scaffold command](/cli/scaffold)
+- [MCP Protocol documentation](https://modelcontextprotocol.io)

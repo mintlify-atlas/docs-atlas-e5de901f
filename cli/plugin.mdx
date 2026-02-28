@@ -1,0 +1,425 @@
+---
+title: "tuist plugin"
+description: "Develop and manage Tuist plugins"
+---
+
+## Overview
+
+The `tuist plugin` command provides tools for plugin development and management. Plugins extend Tuist's functionality with custom tasks and integrations.
+
+## Usage
+
+```bash
+tuist plugin [subcommand] [options]
+```
+
+## Subcommands
+
+### `tuist plugin archive`
+
+Archives a plugin into a `NameOfPlugin.tuist-plugin.zip` file for distribution.
+
+```bash
+tuist plugin archive [options]
+```
+
+### `tuist plugin build`
+
+Builds a plugin.
+
+```bash
+tuist plugin build [options]
+```
+
+### `tuist plugin run`
+
+Runs a plugin task.
+
+```bash
+tuist plugin run [options] <task> [arguments...]
+```
+
+### `tuist plugin test`
+
+Tests a plugin.
+
+```bash
+tuist plugin test [options]
+```
+
+## Common Options
+
+<ParamField path="--path" type="string" default=".">
+  The path to the directory that contains the definition of the plugin.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+<ParamField path="--configuration" type="string" default="debug">
+  Choose configuration: `debug` or `release`.
+</ParamField>
+
+<ParamField path="-c" type="string">
+  Short form of `--configuration`.
+</ParamField>
+
+## Options (for `plugin archive`)
+
+<ParamField path="--path" type="string" default=".">
+  The path to the directory that contains the definition of the plugin.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+## Options (for `plugin build`)
+
+<ParamField path="--build-tests" type="boolean" default="false">
+  Build both source and test targets.
+</ParamField>
+
+<ParamField path="--show-bin-path" type="boolean" default="false">
+  Print the binary output path.
+</ParamField>
+
+<ParamField path="--targets" type="string[]">
+  Build the specified targets.
+</ParamField>
+
+<ParamField path="--products" type="string[]">
+  Build the specified products.
+</ParamField>
+
+## Options (for `plugin run`)
+
+<ParamField path="--build-tests" type="boolean" default="false">
+  Build both source and test targets.
+</ParamField>
+
+<ParamField path="--skip-build" type="boolean" default="false">
+  Skip building the plugin before running.
+</ParamField>
+
+## Arguments (for `plugin run`)
+
+<ParamField path="task" type="string" required>
+  The plugin task to run.
+</ParamField>
+
+<ParamField path="arguments" type="string[]">
+  The arguments to pass to the plugin task.
+</ParamField>
+
+## Options (for `plugin test`)
+
+<ParamField path="--build-tests" type="boolean" default="false">
+  Build both source and test targets.
+</ParamField>
+
+<ParamField path="--test-products" type="string[]">
+  Test the specified products.
+</ParamField>
+
+## Examples
+
+### Build a plugin
+
+```bash
+tuist plugin build
+```
+
+Builds the plugin in debug configuration.
+
+### Build plugin in release mode
+
+```bash
+tuist plugin build --configuration release
+```
+
+Builds an optimized release version of the plugin.
+
+### Build specific targets
+
+```bash
+tuist plugin build --targets MyTask AnotherTask
+```
+
+Builds only the specified plugin targets.
+
+### Run a plugin task
+
+```bash
+tuist plugin run my-task --arg1 value1 --arg2 value2
+```
+
+Executes the `my-task` plugin task with arguments.
+
+### Run without building
+
+```bash
+tuist plugin run my-task --skip-build
+```
+
+Runs the task without rebuilding the plugin first.
+
+### Test a plugin
+
+```bash
+tuist plugin test
+```
+
+Runs all tests for the plugin.
+
+### Test specific products
+
+```bash
+tuist plugin test --test-products MyTaskTests
+```
+
+Runs tests only for the specified test products.
+
+### Archive a plugin
+
+```bash
+tuist plugin archive
+```
+
+Creates a distributable `.tuist-plugin.zip` archive.
+
+### Archive from specific path
+
+```bash
+tuist plugin archive --path path/to/plugin
+```
+
+Archives a plugin located in a specific directory.
+
+## Plugin development workflow
+
+### 1. Create a plugin
+
+Plugins are Swift packages that define custom tasks:
+
+```swift
+import ProjectAutomation
+
+let plugin = Plugin(
+    name: "MyPlugin",
+    products: [
+        .task(name: "my-task", target: "MyTask")
+    ],
+    targets: [
+        .target(
+            name: "MyTask",
+            dependencies: [.product(name: "ProjectAutomation", package: "tuist")]
+        )
+    ]
+)
+```
+
+### 2. Implement tasks
+
+Create executable targets for your tasks:
+
+```swift
+import Foundation
+import ProjectAutomation
+
+@main
+struct MyTask {
+    static func main() async throws {
+        // Your task logic here
+        print("Running custom task")
+    }
+}
+```
+
+### 3. Build and test
+
+Develop your plugin iteratively:
+
+```bash
+# Build the plugin
+tuist plugin build
+
+# Test the plugin
+tuist plugin test
+
+# Run the plugin task
+tuist plugin run my-task
+```
+
+### 4. Archive and distribute
+
+When ready to share:
+
+```bash
+tuist plugin archive
+```
+
+This creates a `.tuist-plugin.zip` file you can distribute.
+
+## Plugin types
+
+### Task plugins
+
+Executable tasks that extend Tuist functionality:
+
+```swift
+.task(name: "format", target: "FormatTask")
+```
+
+### Helper plugins
+
+Libraries that provide reusable code:
+
+```swift
+.library(name: "HelperKit", target: "HelperKit")
+```
+
+## Using plugins
+
+Reference plugins in your `Tuist.swift` or `Project.swift`:
+
+```swift
+import ProjectDescription
+
+let config = Config(
+    plugins: [
+        .git(url: "https://github.com/org/plugin", tag: "1.0.0"),
+        .local(path: "../MyLocalPlugin")
+    ]
+)
+```
+
+## Configuration options
+
+### Debug vs. Release
+
+- **Debug**: Faster builds, includes debug symbols
+- **Release**: Optimized builds, smaller binaries
+
+```bash
+tuist plugin build --configuration release
+```
+
+### Build tests
+
+Include test targets in the build:
+
+```bash
+tuist plugin build --build-tests
+```
+
+### Show binary path
+
+Useful for integrating with other tools:
+
+```bash
+tuist plugin build --show-bin-path
+```
+
+## Best practices
+
+<CardGroup cols={2}>
+  <Card title="Small, focused tasks" icon="bullseye">
+    Create plugins for specific, reusable tasks rather than monolithic tools.
+  </Card>
+  <Card title="Test thoroughly" icon="vial">
+    Use `tuist plugin test` to ensure reliability before distribution.
+  </Card>
+  <Card title="Version plugins" icon="tag">
+    Use semantic versioning and git tags for plugin releases.
+  </Card>
+  <Card title="Document tasks" icon="book">
+    Provide clear documentation for task arguments and usage.
+  </Card>
+</CardGroup>
+
+## Common plugin use cases
+
+### Code generation
+
+Generate boilerplate code, models, or templates:
+
+```bash
+tuist plugin run generate-model --name User --fields "name:String,age:Int"
+```
+
+### Code formatting
+
+Format code using custom rules:
+
+```bash
+tuist plugin run format
+```
+
+### Integration with tools
+
+Integrate third-party tools into your workflow:
+
+```bash
+tuist plugin run analyze --tool swiftlint
+```
+
+### Custom validations
+
+Validate project structure or conventions:
+
+```bash
+tuist plugin run validate-architecture
+```
+
+## Plugin development tips
+
+### Access project information
+
+Use `ProjectAutomation` framework to access project data:
+
+```swift
+import ProjectAutomation
+
+let project = try await Project.load(at: path)
+print("Project: \(project.name)")
+```
+
+### Handle arguments
+
+Parse task arguments using Swift's `ArgumentParser`:
+
+```swift
+import ArgumentParser
+import ProjectAutomation
+
+@main
+struct MyTask: AsyncParsableCommand {
+    @Option(help: "The name to use")
+    var name: String
+    
+    func run() async throws {
+        print("Hello, \(name)!")
+    }
+}
+```
+
+### Error handling
+
+Provide clear error messages:
+
+```swift
+enum PluginError: Error {
+    case invalidConfiguration(String)
+    case taskFailed(String)
+}
+
+throw PluginError.invalidConfiguration("Missing required field")
+```
+
+## Related
+
+- [Init command](/cli/init)
+- [Run command](/cli/run)
+- [Config reference](/cli/config/tuist-config)

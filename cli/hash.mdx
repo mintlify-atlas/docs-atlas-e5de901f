@@ -1,0 +1,155 @@
+---
+title: "tuist hash"
+description: "Debug hashing logic for binary caching and selective testing"
+---
+
+## Overview
+
+The `tuist hash` command provides utilities to debug the hashing logic used by features like binary caching and selective testing. It helps you understand how Tuist calculates hashes for your targets and dependencies.
+
+## Usage
+
+```bash
+tuist hash [subcommand] [options]
+```
+
+## Subcommands
+
+### `tuist hash cache`
+
+Returns the hashes that will be used to persist binaries of the graph in its current state to the cache.
+
+```bash
+tuist hash cache [options]
+```
+
+### `tuist hash selective-testing`
+
+Returns the hashes that will be used to persist targets' test results to select tests in future test runs.
+
+```bash
+tuist hash selective-testing [options]
+```
+
+## Options (for `hash cache`)
+
+<ParamField path="--path" type="string" default=".">
+  The path to the directory that contains the project whose targets will be cached.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+<ParamField path="--configuration" type="string">
+  The project configuration the cache binaries will be bound to (e.g., Debug, Release).
+</ParamField>
+
+<ParamField path="-c" type="string">
+  Short form of `--configuration`.
+</ParamField>
+
+## Options (for `hash selective-testing`)
+
+<ParamField path="--path" type="string" default=".">
+  The path to the directory that contains the project whose tests will run selectively.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+## Examples
+
+### Get cache hashes for current state
+
+```bash
+tuist hash cache
+```
+
+Displays the hashes for all targets in the project that will be used for binary caching.
+
+### Get cache hashes for specific configuration
+
+```bash
+tuist hash cache --configuration Release
+```
+
+Shows the hashes that will be used when caching binaries with the Release configuration.
+
+### Get selective testing hashes
+
+```bash
+tuist hash selective-testing
+```
+
+Displays the hashes used to track test results for selective test execution.
+
+### Get hashes for specific project path
+
+```bash
+tuist hash cache --path path/to/project
+```
+
+Calculates hashes for targets in the specified project directory.
+
+## Understanding hashing
+
+Tuist's hashing system is crucial for both binary caching and selective testing:
+
+### Cache hashing
+
+The cache hash for a target is calculated based on:
+
+1. Source files and their contents
+2. Build settings and configuration
+3. Dependencies and their hashes (cascading)
+4. Resources and other target inputs
+
+When any of these change, the hash changes, indicating that the cached binary is no longer valid.
+
+### Selective testing hashing
+
+The selective testing hash is used to determine:
+
+1. Which tests need to run based on code changes
+2. Which test results can be reused from previous runs
+3. Dependencies between test targets and source code
+
+## Debugging cache misses
+
+Use `tuist hash cache` to debug why binaries aren't being retrieved from cache:
+
+1. Run the command before and after changes
+2. Compare the hashes to identify which targets changed
+3. Investigate why unchanged targets show different hashes
+
+Common causes of unexpected hash changes:
+
+- Generated files with timestamps
+- Environment-dependent build settings
+- Absolute paths in build settings
+- Dependency version updates
+
+## Best practices
+
+<CardGroup cols={2}>
+  <Card title="Verify hashing" icon="fingerprint">
+    Use `tuist hash cache` to verify that your cache configuration is working as expected.
+  </Card>
+  <Card title="Debug cache misses" icon="magnifying-glass">
+    Compare hashes before and after changes to understand cache invalidation.
+  </Card>
+  <Card title="Test selectivity" icon="filter">
+    Use `tuist hash selective-testing` to debug selective test execution.
+  </Card>
+  <Card title="Configuration consistency" icon="sliders">
+    Ensure you use the same configuration when generating and hashing.
+  </Card>
+</CardGroup>
+
+## Related
+
+- [Cache command](/cli/cache)
+- [Test command](/cli/test)
+- [Generate command](/cli/generate)

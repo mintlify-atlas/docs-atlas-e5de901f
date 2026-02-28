@@ -1,0 +1,158 @@
+---
+title: "tuist dump"
+description: "Output manifest files as JSON"
+---
+
+## Overview
+
+The `tuist dump` command reads a Tuist manifest file and outputs its parsed contents as JSON. This is useful for inspecting manifest structure, debugging, or integrating Tuist with other tools.
+
+## Usage
+
+```bash
+tuist dump [manifest] [options]
+```
+
+## Arguments
+
+<ParamField path="manifest" type="string" default="project">
+  The manifest type to dump. Available options:
+  
+  - `project` - Project.swift manifest
+  - `workspace` - Workspace.swift manifest
+  - `config` - Tuist.swift configuration
+  - `template` - Template.swift manifest
+  - `plugin` - Plugin.swift manifest
+  - `package` - Package.swift settings
+</ParamField>
+
+## Options
+
+<ParamField path="--path" type="string" default=".">
+  The path to the folder where the manifest is located.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+## Examples
+
+### Dump project manifest
+
+```bash
+tuist dump
+```
+
+Outputs the `Project.swift` manifest as JSON to stdout.
+
+### Dump workspace manifest
+
+```bash
+tuist dump workspace
+```
+
+Outputs the `Workspace.swift` manifest as JSON.
+
+### Dump configuration
+
+```bash
+tuist dump config
+```
+
+Outputs the `Tuist.swift` configuration file as JSON.
+
+### Dump with custom path
+
+```bash
+tuist dump project --path ~/Projects/MyApp
+```
+
+Dumps the project manifest from a specific directory.
+
+### Dump template
+
+```bash
+tuist dump template --path Templates/Feature
+```
+
+Outputs a template manifest as JSON.
+
+### Dump plugin manifest
+
+```bash
+tuist dump plugin --path Plugins/MyPlugin
+```
+
+Outputs a plugin manifest as JSON.
+
+### Dump package settings
+
+```bash
+tuist dump package
+```
+
+Outputs Package.swift dependency configuration as JSON.
+
+## Output format
+
+The command outputs well-formatted JSON to stdout. The structure matches the internal representation of the manifest after parsing, including:
+
+- Target configurations
+- Dependencies
+- Build settings
+- Schemes
+- File references
+- And all other manifest properties
+
+## Use cases
+
+### Debugging manifests
+
+Inspect how Tuist interprets your manifest files:
+
+```bash
+tuist dump project | jq '.targets[] | .name'
+```
+
+### Integration with tools
+
+Parse manifest data in scripts or external tools:
+
+```bash
+tuist dump project > project.json
+node analyze-project.js
+```
+
+### Validating configuration
+
+Verify that your manifest is parsed correctly:
+
+```bash
+tuist dump config | jq '.plugins'
+```
+
+### Extracting specific data
+
+Use with `jq` or other JSON tools to extract specific information:
+
+```bash
+# List all target names
+tuist dump project | jq '.targets[].name'
+
+# Get all external dependencies
+tuist dump project | jq '.packages[].url'
+
+# Check build settings for a target
+tuist dump project | jq '.targets[] | select(.name=="App") | .settings'
+```
+
+<Note>
+  The dump command loads and evaluates the manifest, so it will fail if the manifest contains errors or invalid configuration.
+</Note>
+
+## Related
+
+- [Project.swift reference](/cli/config/project)
+- [Workspace.swift reference](/cli/config/workspace)
+- [Tuist.swift reference](/cli/config/tuist-config)

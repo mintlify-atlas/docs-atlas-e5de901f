@@ -1,0 +1,176 @@
+---
+title: "tuist install"
+description: "Install remote dependencies for your project"
+---
+
+## Overview
+
+The `tuist install` command installs remote content (e.g., dependencies) necessary to interact with your project. It fetches and resolves dependencies defined in your project manifests, such as Swift packages and other remote resources.
+
+## Usage
+
+```bash
+tuist install [options] [arguments...]
+```
+
+## Options
+
+<ParamField path="--path" type="string" default=".">
+  The path to the directory or a subdirectory of the project.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+<ParamField path="--update" type="boolean" default="false">
+  Instead of simple install, update external content when available.
+</ParamField>
+
+<ParamField path="-u" type="boolean">
+  Short form of `--update`.
+</ParamField>
+
+## Arguments
+
+<ParamField path="arguments" type="string[]">
+  Arguments to pass to the underlying `swift package` invocation. These are captured and passed through to the Swift Package Manager.
+</ParamField>
+
+## Examples
+
+### Install all dependencies
+
+```bash
+tuist install
+```
+
+Installs all remote dependencies defined in your project manifests.
+
+### Install and update dependencies
+
+```bash
+tuist install --update
+```
+
+Updates all external dependencies to their latest compatible versions before installing.
+
+### Install for specific project path
+
+```bash
+tuist install --path path/to/project
+```
+
+Installs dependencies for a project in a specific directory.
+
+### Pass arguments to Swift Package Manager
+
+```bash
+tuist install --package-path Packages/MyPackage
+```
+
+Passes additional arguments to the underlying `swift package` command.
+
+## How it works
+
+The `tuist install` command:
+
+1. Reads your project manifests (`Project.swift`, `Package.swift`, etc.)
+2. Identifies all remote dependencies (Swift packages, etc.)
+3. Resolves dependency versions
+4. Downloads and caches dependencies locally
+5. Prepares the project for generation
+
+## Dependencies
+
+Tuist supports several types of remote dependencies:
+
+### Swift packages
+
+Declare Swift package dependencies in your `Project.swift`:
+
+```swift
+import ProjectDescription
+
+let project = Project(
+    name: "MyApp",
+    targets: [
+        .target(
+            name: "MyApp",
+            dependencies: [
+                .package(product: "Alamofire")
+            ]
+        )
+    ],
+    packages: [
+        .remote(
+            url: "https://github.com/Alamofire/Alamofire",
+            requirement: .upToNextMajor(from: "5.0.0")
+        )
+    ]
+)
+```
+
+### External dependencies
+
+Other types of external content that might be installed:
+
+- Tuist plugins
+- Template repositories
+- Project resources
+
+## Install vs. Update
+
+The difference between install and update modes:
+
+### Install (default)
+
+- Uses existing resolved versions when possible
+- Only fetches new dependencies
+- Respects lock files and version constraints
+- Faster for unchanged dependencies
+
+### Update (`--update`)
+
+- Checks for newer versions of all dependencies
+- Updates to latest compatible versions
+- Updates lock files
+- Takes longer but ensures latest dependencies
+
+## Workflow integration
+
+Typical workflow with `tuist install`:
+
+1. **After cloning**: Run `tuist install` to fetch dependencies
+2. **Adding dependencies**: Update manifests, then run `tuist install`
+3. **Updating dependencies**: Run `tuist install --update` periodically
+4. **Before generating**: Ensure dependencies are installed with `tuist install`
+
+Many Tuist commands automatically install dependencies if needed, but running `tuist install` explicitly can be useful for:
+
+- Pre-downloading dependencies before generation
+- Updating dependencies independently
+- CI/CD pipelines where you want explicit control
+
+## Best practices
+
+<CardGroup cols={2}>
+  <Card title="Install before generate" icon="download">
+    Run `tuist install` before `tuist generate` to ensure all dependencies are ready.
+  </Card>
+  <Card title="Update periodically" icon="rotate">
+    Use `--update` regularly to keep dependencies current with security fixes.
+  </Card>
+  <Card title="CI caching" icon="cloud">
+    Cache installed dependencies in CI to speed up builds.
+  </Card>
+  <Card title="Lock file commits" icon="lock">
+    Commit dependency lock files to ensure consistent builds across team.
+  </Card>
+</CardGroup>
+
+## Related
+
+- [Generate command](/cli/generate)
+- [Project.swift reference](/cli/config/project)
+- [Dependencies guide](/guides/dependencies)

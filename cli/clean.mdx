@@ -1,0 +1,113 @@
+---
+title: "tuist clean"
+description: "Clean artifacts stored locally and remotely"
+---
+
+## Overview
+
+The `tuist clean` command removes cached artifacts from your local machine and optionally from remote storage. This helps reclaim disk space and resolve issues caused by corrupted or outdated cache files.
+
+## Usage
+
+```bash
+tuist clean [categories...] [options]
+```
+
+## Arguments
+
+<ParamField path="categories" type="string[]">
+  The cache and artifact categories to clean. If no category is specified, everything is cleaned. Available categories:
+  
+  - `plugins` - Cached plugins
+  - `generatedAutomationProjects` - Projects generated for automation tasks
+  - `projectDescriptionHelpers` - Project description helpers cache
+  - `manifests` - Manifests cache
+  - `editProjects` - Temporary edit projects cache
+  - `runs` - Tuist runs cache
+  - `binaries` - Cached binary frameworks
+  - `selectiveTests` - Selective testing cache
+  - `dependencies` - Swift Package Manager build directory
+</ParamField>
+
+## Options
+
+<ParamField path="--remote" type="boolean" default="false">
+  Clean the remote cache stored on Tuist Cloud. This removes cached binaries from the server.
+</ParamField>
+
+<ParamField path="--path" type="string" default=".">
+  The path to the directory that contains the project to clean.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+## Examples
+
+### Clean all local artifacts
+
+```bash
+tuist clean
+```
+
+Removes all cached artifacts from your local machine.
+
+### Clean specific categories
+
+```bash
+tuist clean binaries manifests
+```
+
+Removes only cached binaries and manifests.
+
+### Clean plugin cache
+
+```bash
+tuist clean plugins
+```
+
+Removes the plugins cache, useful when updating plugin versions.
+
+### Clean dependencies build directory
+
+```bash
+tuist clean dependencies
+```
+
+Removes the Swift Package Manager `.build` directory at the root of your project.
+
+### Clean remote cache
+
+```bash
+tuist clean --remote
+```
+
+Cleans both local artifacts and removes cached binaries from Tuist Cloud.
+
+### Clean specific category with path
+
+```bash
+tuist clean binaries --path ~/Projects/MyApp
+```
+
+Cleans binaries cache for a project at a specific location.
+
+## When to use clean
+
+You might want to run `tuist clean` when:
+
+- **Freeing disk space**: Cache directories can grow large over time
+- **Resolving cache issues**: Corrupted or outdated cache files causing build problems
+- **After major changes**: When switching between significantly different branches or project states
+- **Plugin updates**: After updating or removing plugins to clear stale plugin cache
+- **Remote cache issues**: Use `--remote` to clear problematic cached binaries from Tuist Cloud
+
+<Note>
+  Cleaning local cache is safe and reversible - artifacts will be regenerated or re-downloaded as needed. However, cleaning remote cache with `--remote` removes shared cached binaries for your entire team.
+</Note>
+
+## Related
+
+- [Cache command](/cli/cache)
+- [Generate command](/cli/generate)

@@ -1,0 +1,282 @@
+---
+title: "tuist auth"
+description: "Manage authentication with Tuist Server"
+---
+
+## Overview
+
+The `tuist auth` command manages authentication with Tuist Server. It allows you to log in, log out, check your current authentication status, and refresh authentication tokens.
+
+## Usage
+
+```bash
+tuist auth [subcommand] [options]
+```
+
+## Subcommands
+
+### `tuist auth login`
+
+Log in to Tuist Server with your email and password.
+
+```bash
+tuist auth login [options]
+```
+
+### `tuist auth logout`
+
+Remove the existing Tuist session and log out.
+
+```bash
+tuist auth logout [options]
+```
+
+### `tuist auth whoami`
+
+Display the user's email identity currently authenticated and in use.
+
+```bash
+tuist auth whoami [options]
+```
+
+### `tuist auth refresh-token`
+
+Refresh the authentication token for a particular server URL. This command is typically used internally and is not displayed in help output.
+
+```bash
+tuist auth refresh-token <url>
+```
+
+## Options
+
+### For `tuist auth login`
+
+<ParamField path="--email" type="string">
+  Email to authenticate with. If not provided, you will be prompted interactively.
+</ParamField>
+
+<ParamField path="--password" type="string">
+  Password to authenticate with. If not provided, you will be prompted interactively.
+</ParamField>
+
+<ParamField path="--url" type="string">
+  The URL of the server to authenticate with. Defaults to the official Tuist Server.
+</ParamField>
+
+### For `tuist auth logout`
+
+<ParamField path="--path" type="string" default=".">
+  The path to the directory or a subdirectory of the project.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+<ParamField path="--url" type="string">
+  The URL of the server to log out from.
+</ParamField>
+
+### For `tuist auth whoami`
+
+<ParamField path="--path" type="string" default=".">
+  The path to the directory or a subdirectory of the project.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+<ParamField path="--url" type="string">
+  The URL of the server to check authentication status.
+</ParamField>
+
+### For `tuist auth refresh-token`
+
+<ParamField path="url" type="string" required>
+  The URL of the server the token is being refreshed for.
+</ParamField>
+
+## Examples
+
+### Log in interactively
+
+```bash
+tuist auth login
+```
+
+Prompts you to enter your email and password interactively.
+
+### Log in with credentials
+
+```bash
+tuist auth login --email user@example.com --password mypassword
+```
+
+Logs in with the provided email and password.
+
+### Log in to a custom server
+
+```bash
+tuist auth login --url https://tuist.mycompany.com
+```
+
+Authenticates with a custom Tuist Server instance.
+
+### Check who is logged in
+
+```bash
+tuist auth whoami
+```
+
+Displays the email address of the currently authenticated user.
+
+### Check authentication for a custom server
+
+```bash
+tuist auth whoami --url https://tuist.mycompany.com
+```
+
+Shows the authenticated user for a specific server.
+
+### Log out
+
+```bash
+tuist auth logout
+```
+
+Removes the authentication session and logs you out.
+
+### Log out from a custom server
+
+```bash
+tuist auth logout --url https://tuist.mycompany.com
+```
+
+Logs out from a specific server instance.
+
+### Refresh authentication token
+
+```bash
+tuist auth refresh-token https://tuist.mycompany.com
+```
+
+Refreshes the authentication token for the specified server URL.
+
+## Authentication workflow
+
+A typical authentication workflow looks like this:
+
+1. **Login**: Authenticate with your Tuist Server credentials
+   ```bash
+   tuist auth login
+   ```
+
+2. **Verify**: Check your authentication status
+   ```bash
+   tuist auth whoami
+   ```
+
+3. **Use Tuist features**: Access remote caching, analytics, and other server features
+
+4. **Logout**: Remove your session when needed
+   ```bash
+   tuist auth logout
+   ```
+
+## Environment variables
+
+The `tuist auth` commands support environment variables for some options:
+
+- `TUIST_LOGOUT_PATH`: Sets the path for `tuist auth logout`
+- `TUIST_WHOAMI_PATH`: Sets the path for `tuist auth whoami`
+- `TUIST_AUTH_REFRESH_TOKEN_SERVER_URL`: Sets the server URL for `tuist auth refresh-token`
+
+## Security considerations
+
+<CardGroup cols={2}>
+  <Card title="Credential storage" icon="lock">
+    Authentication tokens are stored securely on your local machine.
+  </Card>
+  <Card title="Password input" icon="shield">
+    When possible, use interactive login to avoid passing passwords as command-line arguments, which may be visible in shell history.
+  </Card>
+  <Card title="Token refresh" icon="rotate">
+    Tokens are automatically refreshed as needed to maintain your session.
+  </Card>
+  <Card title="Multiple servers" icon="server">
+    You can authenticate with multiple server instances using the `--url` option.
+  </Card>
+</CardGroup>
+
+## Use cases
+
+### CI/CD authentication
+
+For continuous integration, you can use environment variables or command-line options:
+
+```bash
+tuist auth login --email $CI_EMAIL --password $CI_PASSWORD
+```
+
+<Note>
+  Consider using secure credential storage in your CI/CD platform rather than hardcoding credentials in scripts.
+</Note>
+
+### Team collaboration
+
+Authenticate to access shared remote cache and analytics:
+
+```bash
+tuist auth login
+tuist cache warm
+```
+
+Once authenticated, your team can benefit from shared cached binaries.
+
+### Self-hosted Tuist Server
+
+If you're running a self-hosted Tuist Server:
+
+```bash
+tuist auth login --url https://tuist.internal.company.com
+tuist auth whoami --url https://tuist.internal.company.com
+```
+
+## Troubleshooting
+
+### Authentication fails
+
+If login fails, verify:
+- Your email and password are correct
+- The server URL is accessible
+- You have a stable internet connection
+
+### Token expired
+
+If you receive authentication errors, try refreshing your token:
+
+```bash
+tuist auth refresh-token <server-url>
+```
+
+Or log out and log back in:
+
+```bash
+tuist auth logout
+tuist auth login
+```
+
+### Multiple server instances
+
+If working with multiple server instances, always specify the `--url` option to target the correct server:
+
+```bash
+tuist auth whoami --url https://tuist.company1.com
+tuist auth whoami --url https://tuist.company2.com
+```
+
+## Related
+
+- [Cache command](/cli/cache)
+- [Tuist.swift reference](/cli/config/tuist-config)

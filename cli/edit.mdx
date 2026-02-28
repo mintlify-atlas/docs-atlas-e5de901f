@@ -1,0 +1,159 @@
+---
+title: "tuist edit"
+description: "Generate a temporary Xcode project to edit manifests"
+---
+
+## Overview
+
+The `tuist edit` command generates a temporary Xcode project that allows you to edit your Tuist manifest files (`Project.swift`, `Workspace.swift`, etc.) with full IDE support including syntax highlighting, autocomplete, and type checking.
+
+## Usage
+
+```bash
+tuist edit [options]
+```
+
+## Options
+
+<ParamField path="--path" type="string" default=".">
+  The path to the directory whose project will be edited.
+</ParamField>
+
+<ParamField path="-p" type="string">
+  Short form of `--path`.
+</ParamField>
+
+<ParamField path="--permanent" type="boolean" default="false">
+  Creates the project in the current directory or the one indicated by `-p` and doesn't block the process. By default, the project is temporary and the command blocks until you close Xcode.
+</ParamField>
+
+<ParamField path="-P" type="boolean">
+  Short form of `--permanent`.
+</ParamField>
+
+<ParamField path="--only-current-directory" type="boolean" default="false">
+  Only includes the manifest in the current directory. By default, manifests from parent directories and helpers are included.
+</ParamField>
+
+<ParamField path="-o" type="boolean">
+  Short form of `--only-current-directory`.
+</ParamField>
+
+## Examples
+
+### Edit manifests with Xcode
+
+```bash
+tuist edit
+```
+
+Generates a temporary Xcode project, opens it, and waits. When you close Xcode, the temporary project is automatically cleaned up.
+
+### Edit in background
+
+```bash
+tuist edit --permanent
+```
+
+Generates an Xcode project in the current directory and returns immediately. The project file remains after closing Xcode.
+
+### Edit only current directory
+
+```bash
+tuist edit --only-current-directory
+```
+
+Creates a project that only includes the manifest files in the current directory, excluding parent manifests and helpers.
+
+### Edit from specific path
+
+```bash
+tuist edit --path ~/Projects/MyApp
+```
+
+Edits the manifests for a project at a specific location.
+
+### Permanent project in custom location
+
+```bash
+tuist edit --permanent --path Features/Login
+```
+
+Creates a permanent edit project for manifests in the `Features/Login` directory.
+
+## How it works
+
+When you run `tuist edit`, Tuist:
+
+1. **Scans for manifests**: Finds all relevant manifest files (`.swift` files in the project)
+2. **Includes helpers**: Adds any `ProjectDescriptionHelpers` modules for autocomplete
+3. **Generates Xcode project**: Creates a simple Xcode project structure
+4. **Opens in Xcode**: Launches Xcode with the generated project
+5. **Waits (default)**: Blocks until you close Xcode, then cleans up temporary files
+
+## What's included
+
+The edit project includes:
+
+- All manifest files (`Project.swift`, `Workspace.swift`, `Tuist.swift`, etc.)
+- `ProjectDescriptionHelpers` modules with custom extensions
+- Parent directory manifests (unless `--only-current-directory` is used)
+- The `ProjectDescription` framework for autocomplete and type checking
+
+## Use cases
+
+### IDE support for manifests
+
+Get full Xcode IDE features when editing manifest files:
+
+- Syntax highlighting
+- Code completion
+- Type checking
+- Quick documentation
+- Jump to definition
+- Error highlighting
+
+### Working with helpers
+
+Easily navigate and edit `ProjectDescriptionHelpers`:
+
+```bash
+tuist edit
+```
+
+You can jump between manifest files and helper modules with full IDE support.
+
+### Quick manifest fixes
+
+When you need to make complex changes to manifests:
+
+```bash
+tuist edit
+# Make changes in Xcode with full IDE support
+# Close Xcode when done
+```
+
+### Persistent edit project
+
+Keep a permanent edit project alongside your code:
+
+```bash
+tuist edit --permanent
+# The .xcodeproj remains for future editing
+```
+
+Add `Manifests.xcodeproj` to your `.gitignore` if using this approach.
+
+<Warning>
+  The edit project is for editing manifests only. It's not the same as your generated Xcode workspace from `tuist generate`. Use `tuist generate` to work on your actual application code.
+</Warning>
+
+<Tip>
+  If you frequently edit manifests, consider using `--permanent` and adding the generated project to your `.gitignore`. This gives you persistent IDE support without regenerating each time.
+</Tip>
+
+## Related
+
+- [Generate command](/cli/generate)
+- [Project.swift reference](/cli/config/project)
+- [Project structure guide](/guides/project-structure)

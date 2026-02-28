@@ -75,8 +75,22 @@
               "cli/build",
               "cli/test",
               "cli/cache",
+              "cli/clean",
+              "cli/dump",
+              "cli/edit",
+              "cli/graph",
+              "cli/hash",
+              "cli/install",
+              "cli/migration",
+              "cli/plugin",
+              "cli/scaffold",
+              "cli/setup",
               "cli/share",
-              "cli/run"
+              "cli/run",
+              "cli/auth",
+              "cli/xcodebuild",
+              "cli/mcp",
+              "cli/version"
             ]
           },
           {
